@@ -20,6 +20,19 @@ A="\033[0;35m" # MAGENTA
 S="\033[0;33m" # YELLOW
 N="\033[0m"    # NONE
 
+trap ctrl_c INT
+
+ctrl_c() {
+  echo "Scripts processing is cancelled"
+  kill_sdl
+  copy_logs
+  clean_atf_logs
+  restore
+  clean_backup
+  status
+  exit 1
+}
+
 dbg() { if [ $DEBUG = true ]; then echo "$@"; fi }
 
 log() { echo -e $@; }
@@ -189,6 +202,7 @@ restore() {
 clean_backup() {
   log "Cleaning up back-up SDL files"
   for FILE in ${SDL_BACK_UP[*]}; do rm -f ${SDL_CORE}/_${FILE}; done
+  log ${LINE}
 }
 
 await() {
@@ -335,6 +349,7 @@ process() {
       run $ROW ${#LIST[@]}
     done
   fi
+  log ${LINE}
 }
 
 status() {
@@ -346,11 +361,14 @@ status() {
   for i in ${LIST_ABORTED[@]}; do logf "${i/:/: }"; done
   logf "${S}SKIPPED: " ${#LIST_SKIPPED[@]} "${N}"
   for i in ${LIST_SKIPPED[@]}; do logf "${i/:/: }"; done
+  logf ${LINE}
 }
 
 log_test_run_details() {
+  logf ${LINE}
   logf "SDL: " $SDL_CORE
   logf "Test target: " $TEST_TARGET
+  logf ${LINE}
 }
 
 set_default_params_from_atf_config
@@ -361,24 +379,14 @@ check_arguments
 
 create_report_folder
 
-logf ${LINE}
-
 log_test_run_details
-
-logf ${LINE}
 
 backup
 
 process
 
-log ${LINE}
-
 restore
 
 clean_backup
 
-log ${LINE}
-
 status
-
-logf ${LINE}
