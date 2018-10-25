@@ -331,6 +331,8 @@ run() {
   copy_logs
 
   clean_atf_logs
+
+  log
 }
 
 process() {
@@ -362,6 +364,7 @@ status() {
   logf "${S}SKIPPED: " ${#LIST_SKIPPED[@]} "${N}"
   for i in ${LIST_SKIPPED[@]}; do logf "${i/:/: }"; done
   logf ${LINE}
+  log
 }
 
 log_test_run_details() {
