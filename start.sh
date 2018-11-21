@@ -211,7 +211,7 @@ await() {
   local TIME_LEFT=0
   while true
   do
-    if [ ! kill -0 ${PID} &>/dev/null ]; then
+    if ! ps -p $PID > /dev/null; then
       return 0
     fi
     if [ $TIME_LEFT -lt $TIMEOUT ]; then
