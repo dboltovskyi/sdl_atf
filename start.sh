@@ -249,7 +249,11 @@ create_report_folder() {
 copy_logs() {
   local REPORT_DIRS=("SDLLogs*" "ATFLogs*" "XMLReports*")
   for DIR in ${REPORT_DIRS[@]}; do
-    cp `find ${REPORT_PATH}/$DIR -name "*.*"` ${REPORT_PATH_TS_SCRIPT}/
+    if [ -d ${REPORT_PATH}/$DIR ]; then
+      for FILE in $(find ${REPORT_PATH}/$DIR -type f); do
+        cp $FILE ${REPORT_PATH_TS_SCRIPT}/
+      done
+    fi
   done
 }
 
