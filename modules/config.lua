@@ -14,7 +14,7 @@ config.color = true
 config.remoteConnection = {}
 config.remoteConnection.enabled = true
 --- Define host for default remote connection
-config.remoteConnection.url = "127.0.0.1"
+config.remoteConnection.url = "172.17.0.2"
 config.remoteConnection.port = 5555
 
 --- HMI configuration
@@ -34,7 +34,7 @@ config.hmiAdapterConfig.Remote.WebSocketConfig.port = 8087
 
 
 --- Define host for default mobile device connection
-config.mobileHost = "127.0.0.1"
+config.mobileHost = "172.17.0.1"
 --- Define port for default mobile device connection
 config.mobilePort = 12345
 --- Define timeout for Heartbeat in msec
@@ -53,18 +53,16 @@ config.checkAllValidations = false
 config.defaultProtocolVersion = 3
 --- Define path to SDL binary
 -- Example: "/home/user/sdl_build/bin"
-config.pathToSDL = ""
+config.pathToSDL = "/home/developer/sdl/b/5.0.0/p/bin"
 --- Define path to SDL .INI file
 config.pathToSDLConfig = ""
---- Define path to SDL Policy database
-config.pathToSDLPolicyDB = ""
 --- Define path to SDL interfaces
 -- Example: "/home/user/sdl_panasonic/src/components/interfaces"
 config.pathToSDLInterfaces = ""
 --- Define SDL modification
 config.SDL = "smartDeviceLinkCore"
 --- Define host for SDL logs
-config.sdl_logs_host = "localhost"
+config.sdl_logs_host = "172.17.0.2"
 --- Define port for SDL logs
 config.sdl_logs_port = 6676
 --- Flag which defines behavior of ATF on SDL crash

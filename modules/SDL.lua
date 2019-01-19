@@ -33,21 +33,53 @@ SDL.CRASH = -1
 SDL.IDLE = -2
 
 --[[ Local Functions ]]
+local function getPath(pPath, pParentPath)
+  if pParentPath == nil then pParentPath = config.pathToSDL end
+  pParentPath = SDL.addSlashToPath(pParentPath)
+  if string.len(pPath) > 0 then
+    if string.sub(pPath, 1, 1) == "/" then
+      return SDL.addSlashToPath(pPath)
+    elseif string.len(pPath) == 1 and string.sub(pPath, 1, 1) == "." then
+      return pParentPath
+    else
+      return SDL.addSlashToPath(pParentPath .. pPath)
+    end
+  end
+  return pParentPath
+end
+
+local function getFilePath(pFilePath, pParentPath)
+  if pParentPath == nil then pParentPath = config.pathToSDL end
+  pParentPath = getPath(pParentPath)
+  if string.len(pFilePath) > 0 then
+    if string.sub(pFilePath, 1, 1) == "/" then
+      return pFilePath
+    end
+      return pParentPath .. pFilePath
+  end
+  return nil
+end
+
+local function getExecFunc()
+  if config.remoteConnection.enabled then
+    return function(...) ATF.remoteUtils.app:ExecuteCommand(...) end
+  end
+  return os.execute
+end
+
 --- Update SDL logger config in order SDL will be able to write logs through Telnet
 local function updateSDLLogProperties()
-  if config.storeFullSDLLogs then
-    local paramsToUpdate = {
-      {
-        name = "log4j.rootLogger",
-        value = "ALL, TelnetLogging,Console,SmartDeviceLinkCoreLogFile"
-      },
-      {
-        name = "log4j.appender.TelnetLogging.layout.ConversionPattern",
-        value = "%%-5p [%%d{yyyy-MM-dd HH:mm:ss,SSS}][%%t][%%c] %%F:%%L %%M: %%m"
-      }
-    }
-    for _, item in pairs(paramsToUpdate) do
-      SDL.LOGGER.set(item.name, item.value)
+  if config.storeFullSDLLogs == true then
+    local name = "log4j.rootLogger"
+    local curValue = SDL.LOGGER.get(name)
+    local newValue = "TelnetLogging"
+    if not string.find(curValue, newValue) then
+      SDL.LOGGER.set(name, curValue .. ", " .. newValue)
+    end
+    name = "log4j.appender.TelnetLogging.layout.ConversionPattern"
+    curValue = SDL.LOGGER.get(name)
+    if string.sub(curValue, -1) == "n" then
+      SDL.LOGGER.set(name, string.sub(curValue, 1, -3))
     end
   end
 end
@@ -97,7 +129,16 @@ local function deleteFile(pPathToFile)
     local p, n = getPathAndName(pPathToFile)
     local _ = ATF.remoteUtils.file:DeleteFile(p, n)
   else
-    os.execute( "rm -f " .. pPathToFile)
+    os.execute("rm -f " .. pPathToFile)
+  end
+end
+
+local function deleteFolder(pPathToFolder)
+  if config.remoteConnection.enabled then
+    local p, n = getPathAndName(pPathToFolder)
+    local _ = ATF.remoteUtils.file:DeleteFolder(p, n)
+  else
+    os.execute( "rm -rf " .. pPathToFolder)
   end
 end
 
@@ -116,11 +157,12 @@ local function getParamValue(pContent, pParam)
 end
 
 local function setParamValue(pContent, pParam, pValue)
+  pValue = string.gsub(pValue, "%%", "%%%%")
   local out = ""
   local find = false
-  for line in pContent:gmatch("[^\r\n]+") do
+  for line in pContent:gmatch("([^\r\n]*)[\r\n]") do
     if string.match(line, "[; ]*".. pParam ..".*=.*") ~= nil then
-        line = pParam .." = \n"
+      line = pParam .. " = \n"
     end
     local ptrn = "^%s*".. pParam .. "%s*=.*"
     if string.find(line, ptrn) then
@@ -246,7 +288,11 @@ end
 SDL.INI = {}
 
 function SDL.INI.file()
-  return config.pathToSDLConfig .. "smartDeviceLink.ini"
+  local path = config.pathToSDLConfig
+  if path == nil or path == "" then
+    path = config.pathToSDL
+  end
+  return path .. "smartDeviceLink.ini"
 end
 
 function SDL.INI.get(pParam)
@@ -271,13 +317,7 @@ end
 SDL.LOGGER = {}
 
 function SDL.LOGGER.file()
-  local filePath
-  if config.remoteConnection.enabled then
-    filePath = SDL.INI.get("LoggerConfigFile")
-  else
-    filePath = config.pathToSDLConfig .. "log4cxx.properties"
-  end
-  return filePath
+  return config.pathToSDL .. "log4cxx.properties"
 end
 
 function SDL.LOGGER.get(pParam)
@@ -302,7 +342,7 @@ end
 SDL.PreloadedPT = {}
 
 function SDL.PreloadedPT.file()
-  return config.pathToSDLConfig .. SDL.INI.get("PreloadedPT")
+  return getFilePath(SDL.INI.get("PreloadedPT"), SDL.INI.get("AppConfigFolder"))
 end
 
 function SDL.PreloadedPT.get()
@@ -366,7 +406,7 @@ function SDL.CRT.set(pCrtsFileName, pIsModuleCrtDefined)
 
   if pIsModuleCrtDefined == nil then pIsModuleCrtDefined = true end
   local allCrts = getAllCrtsFromPEM(pCrtsFileName)
-  local crtPath = SDL.addSlashToPath(SDL.INI.get("CACertificatePath"))
+  local crtPath = getPath(SDL.INI.get("CACertificatePath"))
   for _, v in pairs({ "rootCA", "issuingCA" }) do
     saveFileContent(crtPath .. v .. ext, allCrts[v])
     createCrtHash(crtPath .. v .. ext)
@@ -381,21 +421,15 @@ end
 
 function SDL.CRT.clean()
   local ext = ".crt"
-  local func
-  if config.remoteConnection.enabled then
-    func = function(...) ATF.remoteUtils.app:ExecuteCommand(...) end
-  else
-    func = os.execute
-  end
-  local crtPath = SDL.addSlashToPath(SDL.INI.get("CACertificatePath"))
-  func("cd " .. crtPath .. " && find . -type l -not -name 'lib*' -exec rm -f {} \\;")
-  func("cd " .. crtPath .. " && rm -rf *" .. ext)
+  local crtPath = getPath(SDL.INI.get("CACertificatePath"))
+  getExecFunc()("cd " .. crtPath .. " && find . -type l -not -name 'lib*' -exec rm -f {} \\;")
+  getExecFunc()("cd " .. crtPath .. " && rm -rf *" .. ext)
 end
 
 SDL.PTS = {}
 
 function SDL.PTS.file()
-  return SDL.addSlashToPath(SDL.INI.get("SystemFilesPath")) .. SDL.INI.get("PathToSnapshot")
+  return getFilePath(SDL.INI.get("PathToSnapshot"), SDL.INI.get("SystemFilesPath"))
 end
 
 function SDL.PTS.get()
@@ -413,7 +447,7 @@ end
 SDL.HMICap = {}
 
 function SDL.HMICap.file()
-  return config.pathToSDLConfig .. SDL.INI.get("HMICapabilities")
+  return getFilePath(SDL.INI.get("HMICapabilities"), SDL.INI.get("AppConfigFolder"))
 end
 
 function SDL.HMICap.get()
@@ -437,38 +471,24 @@ end
 SDL.PolicyDB = {}
 
 function SDL.PolicyDB.clean()
-  deleteFile(config.pathToSDLPolicyDB)
-  if config.remoteConnection.enabled then
-    ATF.remoteUtils.app:ExecuteCommand("rm -rf /fs/tmpfs/*")
-    ATF.remoteUtils.app:ExecuteCommand("rm -rf /fs/rwdata/storage/sdl/.policy.db.")
-  end
-  deleteFile(SDL.addSlashToPath(SDL.INI.get("AppStorageFolder")) .. SDL.INI.get("AppInfoStorage"))
+  deleteFile(getFilePath("policy.sqlite", SDL.INI.get("AppStorageFolder")))
+  deleteFile(getFilePath(SDL.INI.get("AppInfoStorage")))
 end
 
 SDL.Log = {}
 
+function SDL.Log.path()
+  return config.pathToSDL
+end
+
 function SDL.Log.clean()
-  -- if config.remoteConnection.enabled then
-  --   local filePath = SDL.addSlashToPath(SDL.INI.get("TargetLogFileHomeDir"))
-  --   local filePtrn = SDL.INI.get("TargetLogFileNamePattern")
-  --   ATF.remoteUtils.app:ExecuteCommand("rm -rf " ..  filePath .. "*" .. filePtrn)
-  -- else
-  --   os.execute("rm -rf " .. config.pathToSDL .. "*.log")
-  -- end
+  getExecFunc()("rm -rf " .. SDL.Log.path() .. "*.log")
 end
 
 SDL.AppStorage = {}
 
 function SDL.AppStorage.path()
-  local filePath = SDL.INI.get("AppStorageFolder")
-  if string.len(filePath) > 0 then
-    if string.sub(filePath, 1, 1) == "/" then
-      return SDL.addSlashToPath(filePath)
-    else
-      return SDL.addSlashToPath(config.pathToSDL .. filePath)
-    end
-  end
-  return config.pathToSDL
+  return getPath(SDL.INI.get("AppStorageFolder"))
 end
 
 function SDL.AppStorage.isFileExist(pFile)
@@ -488,20 +508,11 @@ function SDL.AppStorage.isFileExist(pFile)
   end
 end
 
-function SDL.AppStorage.clean(ppath)
-  local func
-  local path
-  if ppath == nil then
-    path = "*"
-  else
-    path = ppath
+function SDL.AppStorage.clean(pPath)
+  if pPath == nil then
+    pPath = "*"
   end
-  if config.remoteConnection.enabled then
-    func = function(...) ATF.remoteUtils.app:ExecuteCommand(...) end
-  else
-    func = os.execute
-  end
-  func(" rm -rf " .. SDL.AppStorage.path() .. path)
+  getExecFunc()("rm -rf " .. SDL.AppStorage.path() .. pPath)
 end
 
 --- A global function for organizing execution delays (using the OS)
@@ -532,7 +543,7 @@ function SDL:StartSDL(pathToSDL, smartDeviceLinkCore, ExitOnCrash)
   if config.remoteConnection.enabled then
      result = ATF.remoteUtils.app:StartApp(pathToSDL, smartDeviceLinkCore)
   else
-     result = os.execute ('./tools/StartSDL.sh ' .. pathToSDL .. ' ' .. smartDeviceLinkCore)
+     result = os.execute('./tools/StartSDL.sh ' .. pathToSDL .. ' ' .. smartDeviceLinkCore)
   end
 
   local msg
@@ -597,7 +608,7 @@ function SDL.WaitForSDLStart(test)
       output = state == 1 and true or false
     else
       local hmiPort = config.hmiAdapterConfig.WebSocket.port
-      output = os.execute ("netstat -vatn  | grep " .. hmiPort .. " | grep LISTEN")
+      output = os.execute("netstat -vatn  | grep " .. hmiPort .. " | grep LISTEN")
     end
     if output then
       RAISE_EVENT(event, event)
@@ -638,9 +649,9 @@ function SDL:CheckStatusSDL()
       error("Remote utils: unable to get Appstatus of SDL")
     end
   else
-    local testFile = os.execute ('test -e sdl.pid')
+    local testFile = os.execute('test -e sdl.pid')
     if testFile then
-      local testCatFile = os.execute ('test -e /proc/$(cat sdl.pid)')
+      local testCatFile = os.execute('test -e /proc/$(cat sdl.pid)')
       if not testCatFile then
         return self.CRASH
       end
@@ -652,9 +663,16 @@ end
 
 --- Deleting an SDL process indicator file
 function SDL.DeleteFile()
-  if os.execute ('test -e sdl.pid') then
+  if os.execute('test -e sdl.pid') then
     os.execute('rm -f sdl.pid')
   end
+end
+
+function SDL.GetHostURL()
+  if config.remoteConnection.enabled then
+    return config.remoteConnection.url
+  end
+  return config.mobileHost
 end
 
 config.pathToSDL = SDL.addSlashToPath(config.pathToSDL)
@@ -662,6 +680,6 @@ config.pathToSDLConfig = SDL.addSlashToPath(config.pathToSDLConfig)
 
 setAllSdlBuildOptions()
 
---updateSDLLogProperties()
+updateSDLLogProperties()
 
 return SDL
