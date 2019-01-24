@@ -9,12 +9,14 @@
 
 require('os')
 local sdl_logger = require('sdl_logger')
-local config = require('config')
 local console = require('console')
 local util = require ("atf.util")
-local remote_constants = require('modules/remote/remote_constants')
+local remote_constants = require('remote/remote_constants')
 local ATF = require("ATF")
-local json = require("modules/json")
+local json = require("json")
+local file_utils = require("utils/file_utils")
+
+local fileUtils = file_utils.FileManager(ATF.remoteConnection)
 
 --[[ Module ]]
 local SDL = { }
@@ -91,57 +93,6 @@ local function getPathAndName(pPathToFile)
   return path, name
 end
 
-local function getFileContent(pPathToFile)
-  if config.remoteConnection.enabled then
-    local p, n = getPathAndName(pPathToFile)
-    local _, isExist = ATF.remoteUtils.file:IsFileExists(p, n)
-    if isExist then
-      local _, path = ATF.remoteUtils.file:GetFile(p, n)
-      pPathToFile = path
-    else
-      return nil
-    end
-  end
-  local file = io.open(pPathToFile, "r")
-  local content = nil
-  if file then
-    content = file:read("*all")
-    file:close()
-  end
-  return content
-end
-
-local function saveFileContent(pPathToFile, pContent)
-  if config.remoteConnection.enabled then
-    local p, n = getPathAndName(pPathToFile)
-    local _ = ATF.remoteUtils.file:UpdateFileContent(p, n, pContent)
-  else
-    local file = io.open(pPathToFile, "w")
-    if file then
-      file:write(pContent)
-      file:close()
-    end
-  end
-end
-
-local function deleteFile(pPathToFile)
-  if config.remoteConnection.enabled then
-    local p, n = getPathAndName(pPathToFile)
-    local _ = ATF.remoteUtils.file:DeleteFile(p, n)
-  else
-    os.execute("rm -f " .. pPathToFile)
-  end
-end
-
-local function deleteFolder(pPathToFolder)
-  if config.remoteConnection.enabled then
-    local p, n = getPathAndName(pPathToFolder)
-    local _ = ATF.remoteUtils.file:DeleteFolder(p, n)
-  else
-    os.execute( "rm -rf " .. pPathToFolder)
-  end
-end
-
 local function getParamValue(pContent, pParam)
   for line in pContent:gmatch("[^\r\n]+") do
     if string.match(line, "^%s*" .. pParam .. "%s*=%s*") ~= nil then
@@ -176,43 +127,6 @@ local function setParamValue(pContent, pParam, pValue)
     out = out .. line .. "\n"
   end
   return out
-end
-
-local function backup(pFilePath)
-  if config.remoteConnection.enabled then
-    local p, n = getPathAndName(pFilePath)
-    ATF.remoteUtils.file:BackupFile(p, n)
-  else
-    os.execute(" cp " .. pFilePath .. " " .. pFilePath .. "_origin" )
-  end
-end
-
-local function isFileExist(pFile)
-   if config.remoteConnection.enabled then
-    local p, n = getPathAndName(pFile)
-    local _, isExist = ATF.remoteUtils.file:IsFileExists(p, n)
-    return isExist
-  else
-    local file = io.open(pFile, "r")
-    if file == nil then
-      return false
-    else
-      file:close()
-      return true
-    end
-  end
-end
-
-local function restore(pFilePath)
-  if isFileExist(pFilePath .. "_origin") then
-    if config.remoteConnection.enabled then
-      local p, n = getPathAndName(pFilePath)
-      ATF.remoteUtils.file:RestoreFile(p, n)
-    else
-      os.execute(" cp " .. pFilePath .. "_origin " .. pFilePath )
-      os.execute( " rm -f " .. pFilePath .. "_origin" )
-    end
-  end
 end
 
 --- Structure of SDL build options what to be set
@@ -269,7 +183,7 @@ function SDL.BuildOptions.file()
 end
 
 function SDL.BuildOptions.get(pParam)
-  local content = getFileContent(SDL.BuildOptions.file())
+  local content = fileUtils:GetFileContent(SDL.BuildOptions.file())
   if content then
     for line in content:gmatch("[^\r\n]+") do
       local pType, pValue = string.match(line, "^%s*" .. pParam .. ":(.+)=(%S*)")
@@ -296,22 +210,22 @@ function SDL.INI.file()
 end
 
 function SDL.INI.get(pParam)
-  local content = getFileContent(SDL.INI.file())
+  local content = fileUtils:GetFileContent(SDL.INI.file())
   return getParamValue(content, pParam)
 end
 
 function SDL.INI.set(pParam, pValue)
-  local content = getFileContent(SDL.INI.file())
+  local content = fileUtils:GetFileContent(SDL.INI.file())
   content = setParamValue(content, pParam, pValue)
-  saveFileContent(SDL.INI.file(), content)
+  fileUtils:UpdateFileContent(SDL.INI.file(), content)
 end
 
 function SDL.INI.backup()
-  backup(SDL.INI.file())
+  fileUtils:BackupFile(SDL.INI.file())
 end
 
 function SDL.INI.restore()
-  restore(SDL.INI.file())
+  fileUtils:RestoreFile(SDL.INI.file())
 end
 
 SDL.LOGGER = {}
@@ -321,22 +235,22 @@ function SDL.LOGGER.file()
 end
 
 function SDL.LOGGER.get(pParam)
-  local content = getFileContent(SDL.LOGGER.file())
+  local content = fileUtils:GetFileContent(SDL.LOGGER.file())
   return getParamValue(content, pParam)
 end
 
 function SDL.LOGGER.set(pParam, pValue)
-  local content = getFileContent(SDL.LOGGER.file())
+  local content = fileUtils:GetFileContent(SDL.LOGGER.file())
   content = setParamValue(content, pParam, pValue)
-  saveFileContent(SDL.LOGGER.file(), content)
+  fileUtils:UpdateFileContent(SDL.LOGGER.file(), content)
 end
 
 function SDL.LOGGER.backup()
-  backup(SDL.LOGGER.file())
+  fileUtils:BackupFile(SDL.LOGGER.file())
 end
 
 function SDL.LOGGER.restore()
-  restore(SDL.LOGGER.file())
+  fileUtils:RestoreFile(SDL.LOGGER.file())
 end
 
 SDL.PreloadedPT = {}
@@ -346,21 +260,21 @@ function SDL.PreloadedPT.file()
 end
 
 function SDL.PreloadedPT.get()
-  local content = getFileContent(SDL.PreloadedPT.file())
+  local content = fileUtils:GetFileContent(SDL.PreloadedPT.file())
   return json.decode(content)
 end
 
 function SDL.PreloadedPT.set(pPPT)
   local content = json.encode(pPPT)
-  saveFileContent(SDL.PreloadedPT.file(), content)
+  fileUtils:UpdateFileContent(SDL.PreloadedPT.file(), content)
 end
 
 function SDL.PreloadedPT.backup()
-  backup(SDL.PreloadedPT.file())
+  fileUtils:BackupFile(SDL.PreloadedPT.file())
 end
 
 function SDL.PreloadedPT.restore()
-  restore(SDL.PreloadedPT.file())
+  fileUtils:RestoreFile(SDL.PreloadedPT.file())
 end
 
 SDL.CRT = {}
@@ -408,12 +322,12 @@ function SDL.CRT.set(pCrtsFileName, pIsModuleCrtDefined)
   local allCrts = getAllCrtsFromPEM(pCrtsFileName)
   local crtPath = getPath(SDL.INI.get("CACertificatePath"))
   for _, v in pairs({ "rootCA", "issuingCA" }) do
-    saveFileContent(crtPath .. v .. ext, allCrts[v])
+    fileUtils:UpdateFileContent(crtPath .. v .. ext, allCrts[v])
     createCrtHash(crtPath .. v .. ext)
   end
   if pIsModuleCrtDefined then
-    saveFileContent(crtPath .. "module_key" .. ext, allCrts.key)
-    saveFileContent(crtPath .. "module_crt" .. ext, allCrts.crt)
+    fileUtils:UpdateFileContent(crtPath .. "module_key" .. ext, allCrts.key)
+    fileUtils:UpdateFileContent(crtPath .. "module_crt" .. ext, allCrts.crt)
   end
   SDL.INI.set("KeyPath", crtPath .. "module_key" .. ext)
   SDL.INI.set("CertificatePath", crtPath .. "module_crt" .. ext)
@@ -433,7 +347,7 @@ function SDL.PTS.file()
 end
 
 function SDL.PTS.get()
-  local content = getFileContent(SDL.PTS.file())
+  local content = fileUtils:GetFileContent(SDL.PTS.file())
   if content ~= nil then
     return json.decode(content)
   end
@@ -441,7 +355,7 @@ function SDL.PTS.get()
 end
 
 function SDL.PTS.clean()
-  deleteFile(SDL.PTS.file())
+  fileUtils:DeleteFile(SDL.PTS.file())
 end
 
 SDL.HMICap = {}
@@ -451,28 +365,28 @@ function SDL.HMICap.file()
 end
 
 function SDL.HMICap.get()
-  local content = getFileContent(SDL.HMICap.file())
+  local content = fileUtils:GetFileContent(SDL.HMICap.file())
   return json.decode(content)
 end
 
 function SDL.HMICap.set(pHMICap)
   local content = json.encode(pHMICap)
-  saveFileContent(SDL.HMICap.file(), content)
+  fileUtils:UpdateFileContent(SDL.HMICap.file(), content)
 end
 
 function SDL.HMICap.backup()
-  backup(SDL.HMICap.file())
+  fileUtils:BackupFile(SDL.HMICap.file())
 end
 
 function SDL.HMICap.restore()
-  restore(SDL.HMICap.file())
+  fileUtils:RestoreFile(SDL.HMICap.file())
 end
 
 SDL.PolicyDB = {}
 
 function SDL.PolicyDB.clean()
-  deleteFile(getFilePath("policy.sqlite", SDL.INI.get("AppStorageFolder")))
-  deleteFile(getFilePath(SDL.INI.get("AppInfoStorage")))
+  fileUtils:DeleteFile(getFilePath("policy.sqlite", SDL.INI.get("AppStorageFolder")))
+  fileUtils:DeleteFile(getFilePath(SDL.INI.get("AppInfoStorage")))
 end
 
 SDL.Log = {}
@@ -493,19 +407,7 @@ end
 
 function SDL.AppStorage.isFileExist(pFile)
   pFile = SDL.AppStorage.path() .. pFile
-  if config.remoteConnection.enabled then
-    local p, n = getPathAndName(pFile)
-    local _, isExist = ATF.remoteUtils.file:IsFileExists(p, n)
-    return isExist
-  else
-    local file = io.open(pFile, "r")
-    if file == nil then
-      return false
-    else
-      file:close()
-      return true
-    end
-  end
+  return fileUtils:IsFileExists(pFile)
 end
 
 function SDL.AppStorage.clean(pPath)
