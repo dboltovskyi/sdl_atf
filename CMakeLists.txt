@@ -83,8 +83,8 @@ install(
 
 install(CODE "execute_process( \
     COMMAND ${CMAKE_COMMAND} -E create_symlink \
-    ../lib/libluabson.so \
-    ${CMAKE_INSTALL_PREFIX}/modules/libbson4lua.so \
+    ./libluabson.so \
+    ${CMAKE_INSTALL_PREFIX}/lib/libbson4lua.so \
     )"
 )
 
