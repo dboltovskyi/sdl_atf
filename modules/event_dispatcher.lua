@@ -130,7 +130,7 @@ function mt.__index:AddConnection(connection)
       if exp then
         exp.occurences = exp.occurences + 1
         exp:Action()
-        this:validateAll()
+        -- this:validateAll()
       end
       if this.postEventHandler then
         this.postEventHandler(events.disconnectedEvent)

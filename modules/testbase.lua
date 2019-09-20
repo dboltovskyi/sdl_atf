@@ -284,7 +284,7 @@ local function main()
   timeoutTimer = timers.Timer()
   qt.connect(timeoutTimer, "timeout()", control, "checkstatus()")
 
-  timeoutTimer:start(400)
+  timeoutTimer:start(100)
   control:next()
 end
 
