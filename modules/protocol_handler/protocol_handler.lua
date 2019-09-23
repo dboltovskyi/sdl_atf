@@ -23,7 +23,8 @@ function ProtocolHandler.ProtocolHandler()
   local ret =
   {
     buffer = "",
-    frames = { }
+    frames = { },
+    totalSize = { }
   }
   setmetatable(ret, mt)
   return ret
@@ -256,6 +257,7 @@ end
 -- @tparam function frameHandler Function for additional handling for each incoming frame
 -- @treturn table Parsed message
 function mt.__index:Parse(binary, validateJson, frameHandler)
+  print("=Parse:", "Enter")
   self.buffer = self.buffer .. binary
   local res = { }
   while #self.buffer >= constants.PROTOCOL_HEADER_SIZE do
@@ -276,32 +278,43 @@ function mt.__index:Parse(binary, validateJson, frameHandler)
        or msg._technical.decryptionStatus == securityConstants.SECURITY_STATUS.ERROR then
       table.insert(res, msg)
     else
+      local key = "s"..msg.sessionId.."m"..msg.messageId
       if msg.frameType == constants.FRAME_TYPE.CONTROL_FRAME then
         table.insert(res, msg)
       elseif msg.frameType == constants.FRAME_TYPE.FIRST_FRAME then
-        self.frames[msg.messageId] = ""
-        self.totalSize = msg.size
+        print("=Parse: FIRST_FRAME:", "sessionId", tostring(msg.sessionId), "messageId", tostring(msg.messageId))
+        self.frames[key] = ""
+        self.totalSize[key] = msg.size
       elseif msg.frameType == constants.FRAME_TYPE.SINGLE_FRAME then
+        print("=Parse: SINGLE_FRAME:", "sessionId:", tostring(msg.sessionId))
         if isBinaryDataHasHeader(msg) then
           parseBinaryHeader(msg, validateJson)
         end
         table.insert(res, msg)
       elseif msg.frameType == constants.FRAME_TYPE.CONSECUTIVE_FRAME then
-        self.frames[msg.messageId] = self.frames[msg.messageId] .. msg.binaryData
-        self.totalSize = self.totalSize + msg.size
+        if self.totalSize[key] == nil then
+          print("=Parse: CONS_FRAME:", "UNEXPECTED FRAME", "sessionId:", tostring(msg.sessionId), "messageId", tostring(msg.messageId))
+          -- break
+        end
+        self.frames[key] = self.frames[key] .. msg.binaryData
+        self.totalSize[key] = self.totalSize[key] + msg.size
         if msg.frameInfo == constants.FRAME_INFO.LAST_FRAME then
-          msg.binaryData = self.frames[msg.messageId]
-          msg.size = self.totalSize
-          self.frames[msg.messageId] = nil
-          self.totalSize = nil
+          print("=Parse: LAST_FRAME:", "sessionId:", tostring(msg.sessionId), "messageId", tostring(msg.messageId))
+          msg.binaryData = self.frames[key]
+          msg.size = self.totalSize[key]
+          self.frames[key] = nil
+          self.totalSize[key] = nil
           if isBinaryDataHasHeader(msg) then
             parseBinaryHeader(msg, validateJson)
           end
           table.insert(res, msg)
+        else
+          print("=Parse: CONS_FRAME:", "sessionId:", tostring(msg.sessionId), "messageId", tostring(msg.messageId))
         end
       end
     end
   end
+  print("=Parse:", "Exit")
   return res
 end
 
