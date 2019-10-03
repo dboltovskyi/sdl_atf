@@ -1,36 +1,20 @@
-#!/bin/bash
-
-########################################
-# TODOs:
-#   1. Think of error handling (i.e. if some files do not exist
-#        or docker does not respond etc.)
-#   2. Handling fails in runtime to notify user.
-#       a) while waiting for screen termination check screen log files
-#          to find non passed tests
-#
-# ATF related issues::
-#   1. Handle skipped tests due to known issue
-#       Tests should be skipped with reference to issue in report?
-#       Handle such scripts in "start.sh" of ATF?
-#   2. Handle docker container freeze
-#       For example, on test abortion
-#       (Should it be handled in ATF?)
-########################################
+#!/usr/bin/env bash
 
 #############################################################
 
-_tmp_dir="/tmp/prepared_env"
+_tmp_dir="/media/mkorniichuk/_dde_data/prepared_env"
 _sdl_prepared=$_tmp_dir/sdl
 
-_path_sdl="$HOME/sdl/build_sdl/bin"
-_path_3rd_party="$HOME/sdl/3rd_party"
-_path_atf="$HOME/sdl/sdl_atf"
-_path_atf_test_scripts="$HOME/sdl/sdl_atf_test_scripts"
-_path_sdl_api="$HOME/sdl/sdl_core/src/components/interfaces"
+_path_sdl="$SDL_CORE"
+_path_atf="$ATF_PATH"
+_test_result_path="$REPORT_PATH_TS"
+_testfile="$TEST_TARGET"
+_path_sdl_api="$SDL_API"
+_path_3rd_party="$THIRD_PARTY"
+_number_of_workers=$JOBS
+_path_atf_test_scripts="$ATF_TS_PATH"
 
-_test_result_path="./"
-
-_path_to_atf_parallels="$(dirname $0)"
+_path_to_atf_parallels="$_path_atf/atf_parallels"
 
 #############################################################
 
@@ -51,17 +35,6 @@ _total_failed=0
 _total_aborted=0
 _total_skipped=0
 
-_help="$(basename "$0") [-h|--help] [-j|--jobs n] [-set|--test_set str] [-def|--define [str]] [-res|--result str] -- script that allow you to run several ATF instances
-
-where:
-    -h|--help               show this help message.
-    -j|--jobs n             set number of jobs.
-                                Default value: $_number_of_workers;
-    -set|--test_set str     path to test_set txt file.
-                            Should contain paths to test scripts line by line.
-    -res|--result str       Path to store TestingResult directory to.
-                                Default value: $_test_result_path"
-
 function prepare_sdl {
     #
     #   Preparation for SDL.
@@ -76,10 +49,12 @@ function prepare_sdl {
 
     cp -r $_path_sdl $_sdl_prepared
 
-    ldd $_sdl_prepared/bin/smartDeviceLinkCore \
-    | grep "$_path_3rd_party/lib\|$_path_3rd_party/x86_64/lib" \
-    | awk '{print $3}' \
-    | xargs -L1 -I LIB cp LIB $_sdl_prepared/bin
+    if [ ! -z "$_path_3rd_party" ]; then
+        ldd $_sdl_prepared/bin/smartDeviceLinkCore \
+        | grep "$_path_3rd_party/lib\|$_path_3rd_party/x86_64/lib" \
+        | awk '{print $3}' \
+        | xargs -L1 -I LIB cp LIB $_sdl_prepared/bin
+    fi
 }
 
 function rm_dir_if_exists {
@@ -112,7 +87,12 @@ function prepare_atf {
     fi
     mkdir $atf_tmp_dir
 
-    rsync -a $_path_atf/* $atf_tmp_dir/ --exclude TestingReports
+    if [ ! -d "$_path_atf" ]; then
+        log $LINE
+        log "Wrong path to ATF: '$_path_atf'"
+        exit 1
+    fi
+    rsync -a $_path_atf/* $atf_tmp_dir/ --exclude TestingReports --exclude $_test_result_path
 
     rm_dir_if_exists $atf_tmp_dir/files
     rm_dir_if_exists $atf_tmp_dir/test_scripts
@@ -123,6 +103,12 @@ function prepare_atf {
         rm -r $atf_tmp_ts_dir
     fi
     mkdir $atf_tmp_ts_dir
+
+    if [ ! -d "$_path_atf_test_scripts" ]; then
+        log $LINE
+        log "Wrong path to ATF test scripts: '$_path_atf_test_scripts'"
+        exit 1
+    fi
     cp -r $_path_atf_test_scripts/* $atf_tmp_ts_dir/
 
     cp $_path_sdl_api/*.xml $atf_tmp_dir/data
@@ -135,6 +121,11 @@ function prepare_atf {
 function prepare_queue {
     if [ -f "$_queue" ];then
         rm $_queue
+    fi
+    if [ ! -f "$_testfile" ]; then
+        log $LINE
+        log "Test target is not found: '$_testfile'"
+        exit 1
     fi
     cp $_testfile $_queue
 }
@@ -180,7 +171,7 @@ function wait_screen_termination_with_progress {
 }
 
 function show_progress {
-    new_state=$([ -s $_queue ] && diff -N $_queue $_testfile | tail -n +2 | awk {'print $2'})
+    new_state=$(diff -N <(sed -e '$a\' $_queue) <(sed -e '$a\' $_testfile) | tail -n +2 | awk {'print $2'})
     processed=$(diff <(echo "$new_state") <(echo "$_last_state") | tail -n +2 | awk '{print $2}')
 
     if [ -z "$processed" ]; then
@@ -189,7 +180,7 @@ function show_progress {
 
     for item in $processed
     do
-        echo $item
+        log $item
     done
     _last_state=$new_state
 }
@@ -210,11 +201,11 @@ function process_report {
 
     test_target=$(cat $curr_report_file | grep "Test target:" | awk '{print $3}')
 
-    total_tests=$(cat $curr_report_file | grep "TOTAL" | awk '{print $2}')
-    passed_tests=$(cat $curr_report_file | grep "PASSED" | awk '{print $2}')
-    failed_tests=$(cat $curr_report_file | grep "FAILED" | awk '{print $2}')
-    aborted_tests=$(cat $curr_report_file | grep "ABORTED" | awk '{print $2}')
-    skipped_tests=$(cat $curr_report_file | grep "SKIPPED" | awk '{print $2}')
+    total_tests=$(cat $curr_report_file | grep "TOTAL:" | awk '{print $2}')
+    passed_tests=$(cat $curr_report_file | grep "PASSED:" | awk '{print $2}')
+    failed_tests=$(cat $curr_report_file | grep "FAILED:" | awk '{print $2}')
+    aborted_tests=$(cat $curr_report_file | grep "ABORTED:" | awk '{print $2}')
+    skipped_tests=$(cat $curr_report_file | grep "SKIPPED:" | awk '{print $2}')
 
     ((_overall_test_number+=total_tests))
     ((_total_passed+=passed_tests))
@@ -261,6 +252,9 @@ function generate_total_report {
 
     for worker in $(ls $env_dir | grep _worker)
     do
+        if [ ! -d $env_dir/$worker/TestingReports ]; then
+            continue;
+        fi
         for item in $(ls $env_dir/$worker/TestingReports)
         do
             abs_path=$env_dir/$worker/TestingReports/$item
@@ -287,7 +281,7 @@ function generate_total_report {
     echo "SKIPPED: $_total_skipped" >> $overall_report_file
     echo "=====================================================================================================" >> $overall_report_file
 
-    cp -r $testing_report_dir $_test_result_path
+    mv $testing_report_dir/* $_test_result_path/
 }
 
 #############################################################
@@ -310,105 +304,33 @@ function int_handler {
     exit 1
 }
 
-function parse_args {
-    while [[ $# -gt 0 ]]; do
-        arg="$1"
-        case $arg in
-            -j*|--jobs*)
-                prefix=-j
-                if [[ $arg != -j* ]]; then
-                    prefix=--jobs
-                fi
+function StartUp() {
+    trap 'int_handler' INT
 
-                _number_of_workers="${arg#*$prefix}"
-                if [ -z $_number_of_workers ]; then
-                    shift
-                    _number_of_workers=$1
-                fi
+    log "Test target: $_testfile"
+    log "Jobs: $_number_of_workers"
 
-                if ! [[ "$_number_of_workers" =~ ^[0-9]+$ ]]; then
-                    echo "Error:: Expected integer. Got: $_number_of_workers"
-                    exit 1
-                fi
-
-                shift
-                ;;
-            -set*|--test_set*)
-                shift
-                _testfile=$1
-                if [ ! -f "$_testfile" ];then
-                    echo "Error:: File does not exists: $_testfile"
-                    exit 1
-                fi
-                shift
-                ;;
-            -def|--define)
-                _use_predefined_values=true
-
-                shift
-                values_path=$1
-                if [ -z $values_path ] || [ $values_path == -* ]; then
-                    continue
-                fi
-
-                if [ ! -f $values_path ]; then
-                    echo "Error:: File does not exists: $_testfile"
-                    exit 1
-                fi
-
-                _predefined_values_path=$values_path
-                shift
-                ;;
-            -res|--result)
-                shift
-                _test_result_path=$1
-                if [ ! -d "$_test_result_path" ];then
-                    echo "Error:: File does not exists: $_test_result_path"
-                    exit 1
-                fi
-                shift
-                ;;
-            -h|--help)
-                echo "$_help"
-                exit
-                ;;
-            *)
-                echo "Unknown argument: $arg!"
-                exit 1
-                ;;
-        esac
-    done
+    common
 }
 
 _tmp_workers=""
-function main {
-    trap 'int_handler' INT
-
-    parse_args $@
-
-    echo "Testset: $_testfile"
-    echo "Jobs: $_number_of_workers"
-
-    common
-
-    echo "Running workers..."
+function Run() {
+    log "Running workers..."
     for (( a = 0; a < $_number_of_workers; a++ )); do
         tmpdirname=$(mktemptdir)
         screen_basename=$(basename $tmpdirname)
-        screen -d -m -L log/$screen_basename -S $screen_basename $_path_to_atf_parallels/loop.sh $tmpdirname $atf_tmp_ts_dir $_queue
+        screen -d -m -S $screen_basename $_path_to_atf_parallels/loop.sh $tmpdirname $atf_tmp_ts_dir $_queue
         _tmp_workers=$(echo $_tmp_workers" $screen_basename" | xargs)
     done
 
-    echo "Workers are running. Waiting termination..."
+    log "Workers are running. Waiting termination..."
     wait_screen_termination_with_progress
-
-    echo "Collecting results..."
-    generate_total_report $_tmp_dir
-
-    echo "Clearing up..."
-    clean_up
-
-    echo "Done!"
 }
 
-main $@
+function TearDown() {
+    log "Collecting results..."
+    generate_total_report $_tmp_dir
+
+    log "Clearing up..."
+    clean_up
+}

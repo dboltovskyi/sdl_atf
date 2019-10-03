@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-ATF_PATH=.
+ATF_PATH=$(cd "$(dirname "$0")" && pwd)
 REPORT_FILE=Report.txt
 REPORT_FILE_CONSOLE=Console.txt
 DEBUG=false
@@ -13,6 +13,12 @@ SDL_BACK_UP=("sdl_preloaded_pt.json" "smartDeviceLink.ini" "hmi_capabilities.jso
 ATF_CLEAN_UP=("sdl.pid" "mobile*.out")
 SDL_CLEAN_UP=("*.log" "app_info.dat" "storage" "ivsu_cache" "../sdl_bin_bk")
 
+JOBS=1
+FORCE_PARALLELS=false
+
+THIRD_PARTY="$THIRD_PARTY_INSTALL_PREFIX"
+ATF_TS_PATH=$(dirname $(realpath test_scripts))
+
 # Color modifications
 P="\033[0;32m" # GREEN
 F="\033[0;31m" # RED
@@ -20,24 +26,9 @@ A="\033[0;35m" # MAGENTA
 S="\033[0;33m" # YELLOW
 N="\033[0m"    # NONE
 
-trap ctrl_c INT
-
-ctrl_c() {
-  echo "Scripts processing is cancelled"
-  kill_sdl
-  copy_logs
-  clean_atf_logs
-  restore
-  clean_backup
-  status
-  exit 1
-}
-
 dbg() { if [ $DEBUG = true ]; then echo "$@"; fi }
 
 log() { echo -e $@; }
-
-logf() { log "$@" | tee >(sed "s/\x1b[^m]*m//g" >> ${REPORT_PATH_TS}/${REPORT_FILE}); }
 
 show_help() {
   echo "Bash .lua test Script Runner"
@@ -54,10 +45,14 @@ show_help() {
   echo "   - test set"
   echo "   - folder with test scripts"
   echo "[OPTION] - options supported by ATF:"
-  echo "   --sdl-interfaces   - path to SDL APIs"
+  echo "   --sdl-api          - path to SDL APIs"
   echo "   --report-path      - path to report and logs"
+  echo "   -j|--jobs n        - number of jobs to start ATF in parallels"
+  echo "   --third-party str  - path to SDL third party"
+  echo "   --atf-ts str       - path to ATF test scripts"
+  echo "   --parallels        - force to use parallels"
   echo
-  echo "In case if folder is specified:"
+  echo "In case if folder is specified as a test target:"
   echo "   - only scripts which name starts with number will be taken into account (e.g. 001, 002 etc.)"
   echo "   - if there are sub-folders scripts will be run recursively"
   echo
@@ -72,6 +67,7 @@ set_default_params_from_atf_config() {
   local CONFIG_FILE=${ATF_PATH}/modules/config.lua
   REPORT_PATH=$(get_param_from_atf_config ${CONFIG_FILE} "config.reportPath")
   SDL_CORE=$(get_param_from_atf_config ${CONFIG_FILE} "config.pathToSDL")
+  SDL_API=$(get_param_from_atf_config ${CONFIG_FILE} "config.pathToSDLInterfaces")
   SDL_PROCESS_NAME=$(get_param_from_atf_config ${CONFIG_FILE} "config.SDL")
   dbg "Default arguments from ATF config:"
   dbg "  SDL_CORE: "$SDL_CORE
@@ -132,6 +128,21 @@ parse_arguments() {
       --report-path)
         REPORT_PATH="$ARG_VAL"
       ;;
+      --sdl-api)
+        SDL_API="$ARG_VAL"
+      ;;
+      -j|--jobs)
+        JOBS="$ARG_VAL"
+      ;;
+      --third-party)
+        THIRD_PARTY="$ARG_VAL"
+      ;;
+      --atf-ts)
+        ATF_TS_PATH="$ARG_VAL"
+      ;;
+      --parallels)
+        FORCE_PARALLELS=true
+      ;;
       -h|--help|-help|--h)
         show_help
       ;;
@@ -171,10 +182,6 @@ check_arguments() {
     echo "SDL core binaries was not found by defined path"
     exit 1
   fi
-  if [ ! -d $TEST_TARGET ] && [ ! -f $TEST_TARGET ]; then
-    echo "Test target was not found by defined path"
-    exit 1
-  fi
   # add '/' to the end of the path if it missing
   if [ "${SDL_CORE: -1}" = "/" ]; then
     SDL_CORE="${SDL_CORE:0:-1}"
@@ -205,201 +212,27 @@ clean_backup() {
   log ${LINE}
 }
 
-await() {
-  local PID=$1
-  local TIMEOUT=$2
-  local TIME_LEFT=0
-  while true
-  do
-    if ! ps -p $PID > /dev/null; then
-      return 0
-    fi
-    if [ $TIME_LEFT -lt $TIMEOUT ]; then
-      let TIME_LEFT=TIME_LEFT+1
-      sleep 1
-    else
-      echo "Timeout ($TIMEOUT sec) expired. Force killing: ${PID} ..."
-      kill -s SIGKILL ${PID}
-      sleep 0.5
-      return 0
-    fi
-  done
-}
-
-kill_sdl() {
-  local PIDS=$(ps -ao user:20,pid,command | grep -e "^$(whoami).*$SDL_PROCESS_NAME" | grep -v grep | awk '{print $2}')
-  for PID in $PIDS
-  do
-    local PID_INFO=$(pstree -sg $PID | head -n 1 | grep -vE "docker|containerd")
-    if [ ! -z "$PID_INFO" ]; then
-      log "'$SDL_PROCESS_NAME' is running, PID: $PID, terminating ..."
-      kill -s SIGTERM $PID
-      await $PID 5
-      log "Done"
-    fi
-  done
-}
-
 create_report_folder() {
   TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
   REPORT_PATH_TS=${REPORT_PATH}/${TIMESTAMP}
   mkdir -p ${REPORT_PATH_TS}
 }
 
-copy_logs() {
-  local REPORT_DIR_PTRNS=("SDLLogs*" "ATFLogs*" "XMLReports*")
-  for PTRN in ${REPORT_DIR_PTRNS[@]}; do
-    for DIR in $(find ${REPORT_PATH} -name "$PTRN"); do
-      for FILE in $(find $DIR -type f); do
-        cp $FILE ${REPORT_PATH_TS_SCRIPT}/
-      done
-    done
-  done
-}
-
-clean_atf_logs() {
-  local REPORT_DIR_PTRNS=("SDLLogs*" "ATFLogs*" "XMLReports*")
-  for DIR in ${REPORT_DIR_PTRNS[@]}; do
-    rm -rf ${REPORT_PATH}/$DIR
-  done
-}
-
-clean() {
-  log "Cleaning up ATF folder"
-  for FILE in ${ATF_CLEAN_UP[*]}; do rm -rf ${ATF_PATH}/${FILE}; done
-  log "Cleaning up SDL folder"
-  for FILE in ${SDL_CLEAN_UP[*]}; do rm -rf ${SDL_CORE}/${FILE}; done
-}
-
-run() {
-  local SCRIPT=$1
-  local NUM_OF_SCRIPTS=$2
-  local ISSUE=$3
-
-  log ${LINE}
-
-  let ID=ID+1
-
-  log "Processing script: ${ID}(${NUM_OF_SCRIPTS}) ["\
-    "${P}PASSED: ${#LIST_PASSED[@]}, "\
-    "${F}FAILED: ${#LIST_FAILED[@]}, "\
-    "${A}ABORTED: ${#LIST_ABORTED[@]}, "\
-    "${S}SKIPPED: ${#LIST_SKIPPED[@]}"\
-    "${N}]"
-
-  kill_sdl
-
-  clean
-
-  clean_atf_logs
-
-  restore
-
-  local ID_SFX=$(printf "%0${#NUM_OF_SCRIPTS}d" $ID)
-
-  REPORT_PATH_TS_SCRIPT=${REPORT_PATH_TS}/${ID_SFX}
-  mkdir ${REPORT_PATH_TS_SCRIPT}
-
-  local OPTIONS="--sdl-core=${SDL_CORE} --report-path=${REPORT_PATH} $OPTIONS"
-  dbg "OPTIONS: "$OPTIONS
-
-  ./bin/interp modules/launch.lua \
-    $SCRIPT \
-    $OPTIONS \
-    | tee >(sed "s/\x1b[^m]*m//g" > ${REPORT_PATH_TS_SCRIPT}/${REPORT_FILE_CONSOLE})
-
-  local RESULT_CODE=${PIPESTATUS[0]}
-  local RESULT_STATUS="NOT_DEFINED"
-
-  case "${RESULT_CODE}" in
-    0)
-      RESULT_STATUS="PASSED"
-      LIST_PASSED[ID]="$ID_SFX|$SCRIPT|$ISSUE"
-    ;;
-    1)
-      RESULT_STATUS="ABORTED"
-      LIST_ABORTED[ID]="$ID_SFX|$SCRIPT|$ISSUE"
-    ;;
-    2)
-      RESULT_STATUS="FAILED"
-      LIST_FAILED[ID]="$ID_SFX|$SCRIPT|$ISSUE"
-    ;;
-    4)
-      RESULT_STATUS="SKIPPED"
-      LIST_SKIPPED[ID]="$ID_SFX|$SCRIPT|$ISSUE"
-    ;;
-  esac
-
-  log "SCRIPT STATUS: " ${RESULT_STATUS}
-
-  kill_sdl
-
-  copy_logs
-
-  clean_atf_logs
-
-  log
-}
-
-process() {
-  ID=0
-  local EXT=${TEST_TARGET: -3}
-  if [ $EXT = "txt" ]; then
-    while read -r ROW; do
-      if [ ${ROW:0:1} = ";" ]; then continue; fi
-      local script=$(echo $ROW | awk '{print $1}')
-      local issue=$(echo $ROW | awk '{print $2}')
-      local total_num_of_scripts=$(cat $TEST_TARGET | egrep -v -c '^;')
-      run $script $total_num_of_scripts $issue
-    done < "$TEST_TARGET"
-  elif [ $EXT = "lua" ]; then
-    run $TEST_TARGET 1
-  else
-    local LIST=($(find $TEST_TARGET -iname "[0-9]*.lua" | sort))
-    for ROW in ${LIST[@]}; do
-      run $ROW ${#LIST[@]}
-    done
-  fi
-  log ${LINE}
-}
-
-status() {
-  logf "TOTAL: " $ID
-  logf "${P}PASSED: " ${#LIST_PASSED[@]} "${N}"
-  # for i in ${LIST_PASSED[@]}; do logf "${i//|/ }"; done
-  logf "${F}FAILED: " ${#LIST_FAILED[@]} "${N}"
-  for i in ${LIST_FAILED[@]}; do logf "${i//|/ }"; done
-  logf "${A}ABORTED: " ${#LIST_ABORTED[@]} "${N}"
-  for i in ${LIST_ABORTED[@]}; do logf "${i//|/ }"; done
-  logf "${S}SKIPPED: " ${#LIST_SKIPPED[@]} "${N}"
-  for i in ${LIST_SKIPPED[@]}; do logf "${i//|/ }"; done
-  logf ${LINE}
-  log
-}
-
-log_test_run_details() {
-  logf ${LINE}
-  logf "SDL: " $SDL_CORE
-  logf "Test target: " $TEST_TARGET
-  logf ${LINE}
-}
-
 set_default_params_from_atf_config
-
 parse_arguments "$@"
-
 check_arguments
-
+backup
 create_report_folder
 
-log_test_run_details
+if [ $JOBS -gt 1 ] || [ $FORCE_PARALLELS = true ]; then
+  source tools/runners/parallels.sh
+else
+  source tools/runners/common.sh
+fi
 
-backup
-
-process
+StartUp
+Run
+TearDown
 
 restore
-
 clean_backup
-
-status
