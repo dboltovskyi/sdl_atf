@@ -34,11 +34,10 @@ process() {
   ID=0
   local EXT=${TEST_TARGET: -3}
   if [ $EXT = "txt" ]; then
+    local total_num_of_scripts=$(wc -l $TEST_TARGET | awk '{print $1}')
     while read -r ROW; do
-      if [ ${ROW:0:1} = ";" ]; then continue; fi
       local script=$(echo $ROW | awk '{print $1}')
       local issue=$(echo $ROW | awk '{print $2}')
-      local total_num_of_scripts=$(cat $TEST_TARGET | egrep -v -c '^;')
       run $script $total_num_of_scripts $issue
     done < "$TEST_TARGET"
   elif [ $EXT = "lua" ]; then
@@ -81,16 +80,22 @@ run() {
   REPORT_PATH_TS_SCRIPT=${REPORT_PATH_TS}/${ID_SFX}
   mkdir ${REPORT_PATH_TS_SCRIPT}
 
-  local OPTIONS="--sdl-core=${SDL_CORE} --report-path=${REPORT_PATH} --sdl-interfaces=${SDL_API}"
-  dbg "OPTIONS: "$OPTIONS
-
-  ./bin/interp modules/launch.lua \
-    $SCRIPT \
-    $OPTIONS \
-    | tee >(sed "s/\x1b[^m]*m//g" > ${REPORT_PATH_TS_SCRIPT}/${REPORT_FILE_CONSOLE})
-
-  local RESULT_CODE=${PIPESTATUS[0]}
+  local RESULT_CODE=4
   local RESULT_STATUS="NOT_DEFINED"
+
+  if [ ${SCRIPT:0:1} != ";" ]; then
+
+    local OPTIONS="--sdl-core=${SDL_CORE} --report-path=${REPORT_PATH} --sdl-interfaces=${SDL_API}"
+    dbg "OPTIONS: "$OPTIONS
+
+    ./bin/interp modules/launch.lua \
+      $SCRIPT \
+      $OPTIONS \
+      | tee >(sed "s/\x1b[^m]*m//g" > ${REPORT_PATH_TS_SCRIPT}/${REPORT_FILE_CONSOLE})
+
+    RESULT_CODE=${PIPESTATUS[0]}
+
+  fi
 
   case "${RESULT_CODE}" in
     0)

@@ -35,18 +35,14 @@ _total_aborted=0
 _total_skipped=0
 
 function set_num_of_workers {
-    local num=0
-    while read -r ROW; do
-        if [ ${ROW:0:1} != ";" ]; then
-            let num=num+1
-        fi
-    done < "$_testfile"
+    local num=$(wc -l $_queue | awk '{print $1}')
     echo "Number of scripts to execute: "$num
     echo "Max number of jobs: "$JOBS
     _number_of_workers=$JOBS
     if [ "$num" -lt "$JOBS" ]; then
         _number_of_workers=$num
     fi
+
     echo "Number of workers: "$_number_of_workers
 }
 
@@ -142,7 +138,7 @@ function prepare_queue {
         log "Test target is not found: '$_testfile'"
         exit 1
     fi
-    cp $_testfile $_queue
+    sed '/\.\//!d' $_testfile > $_queue
 }
 
 function common {
@@ -152,9 +148,11 @@ function common {
     fi
     mkdir $_tmp_dir
 
+    prepare_queue
+    set_num_of_workers
+
     prepare_sdl
     prepare_atf
-    prepare_queue
 }
 
 function mktemptdir {
@@ -323,8 +321,6 @@ function StartUp() {
     trap 'int_handler' INT
 
     log "Test target: $_testfile"
-
-    set_num_of_workers
 
     common
 }
