@@ -138,6 +138,10 @@ copy_logs() {
       done
     done
   done
+  local SDL_LOG=$SDL_CORE/SmartDeviceLinkCore.log
+  if [ -f $SDL_LOG ]; then
+    cp $SDL_LOG ${REPORT_PATH_TS_SCRIPT}/
+  fi
 }
 
 kill_sdl() {

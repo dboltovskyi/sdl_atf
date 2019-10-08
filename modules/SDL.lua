@@ -143,6 +143,7 @@ function SDL:StopSDL()
     sdl_logger.close()
   end
   sleep(1)
+  SDL:DeleteFile()
 end
 
 --- SDL status check
@@ -183,7 +184,7 @@ local function updateSDLLogProperties()
     local paramsToUpdate = {
       {
         name = "log4j.rootLogger",
-        value = "ALL, SmartDeviceLinkCoreLogFile, TelnetLogging"
+        value = "ALL, SmartDeviceLinkCoreLogFile"
       },
       {
         name = "log4j.appender.TelnetLogging.layout.ConversionPattern",
