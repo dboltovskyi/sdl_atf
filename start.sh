@@ -11,6 +11,7 @@ FORCE_PARALLELS=false
 
 THIRD_PARTY="$THIRD_PARTY_INSTALL_PREFIX"
 ATF_TS_PATH=$(dirname $(realpath test_scripts))
+TMP_PATH=/tmp
 
 # Color modifications
 P="\033[0;32m" # GREEN
@@ -44,6 +45,7 @@ show_help() {
   echo "   --third-party str  - path to SDL third party"
   echo "   --atf-ts str       - path to ATF test scripts"
   echo "   --parallels        - force to use parallels"
+  echo "   --tmp              - path to temporary folder used by parallels"
   echo
   echo "In case if folder is specified as a test target:"
   echo "   - only scripts which name starts with number will be taken into account (e.g. 001, 002 etc.)"
@@ -135,6 +137,9 @@ parse_arguments() {
       ;;
       --parallels)
         FORCE_PARALLELS=true
+      ;;
+      --tmp)
+        TMP_PATH="$ARG_VAL"
       ;;
       -h|--help|-help|--h)
         show_help

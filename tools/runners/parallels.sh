@@ -2,7 +2,7 @@
 
 #############################################################
 
-_tmp_dir="/media/mkorniichuk/_dde_data/prepared_env"
+_tmp_dir="$TMP_PATH/prepared_env"
 _sdl_prepared=$_tmp_dir/sdl
 
 _path_sdl="$SDL_CORE"
