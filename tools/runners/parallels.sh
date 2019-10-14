@@ -11,7 +11,6 @@ _test_result_path="$REPORT_PATH_TS"
 _testfile="$TEST_TARGET"
 _path_sdl_api="$SDL_API"
 _path_3rd_party="$THIRD_PARTY"
-_number_of_workers=$JOBS
 _path_atf_test_scripts="$ATF_TS_PATH"
 
 _path_to_atf_parallels="$_path_atf/atf_parallels"
@@ -34,6 +33,22 @@ _total_passed=0
 _total_failed=0
 _total_aborted=0
 _total_skipped=0
+
+function set_num_of_workers {
+    local num=0
+    while read -r ROW; do
+        if [ ${ROW:0:1} != ";" ]; then
+            let num=num+1
+        fi
+    done < "$_testfile"
+    echo "Number of scripts to execute: "$num
+    echo "Max number of jobs: "$JOBS
+    _number_of_workers=$JOBS
+    if [ "$num" -lt "$JOBS" ]; then
+        _number_of_workers=$num
+    fi
+    echo "Number of workers: "$_number_of_workers
+}
 
 function prepare_sdl {
     #
@@ -308,7 +323,8 @@ function StartUp() {
     trap 'int_handler' INT
 
     log "Test target: $_testfile"
-    log "Jobs: $_number_of_workers"
+
+    set_num_of_workers
 
     common
 }
