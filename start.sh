@@ -6,13 +6,6 @@ REPORT_FILE_CONSOLE=Console.txt
 DEBUG=false
 LINE="====================================================================================================="
 
-# SDL files to back-up
-SDL_BACK_UP=("sdl_preloaded_pt.json" "smartDeviceLink.ini" "hmi_capabilities.json" "log4cxx.properties")
-
-# ATF and SDL files/folders to remove before each script run
-ATF_CLEAN_UP=("sdl.pid" "mobile*.out")
-SDL_CLEAN_UP=("*.log" "app_info.dat" "storage" "ivsu_cache" "../sdl_bin_bk")
-
 JOBS=1
 FORCE_PARALLELS=false
 
@@ -196,22 +189,6 @@ check_arguments() {
   dbg "  OPTIONS: "$OPTIONS
 }
 
-backup() {
-  log "Back-up SDL files"
-  for FILE in ${SDL_BACK_UP[*]}; do cp -n ${SDL_CORE}/${FILE} ${SDL_CORE}/_${FILE}; done
-}
-
-restore() {
-  log "Restoring SDL files from back-up"
-  for FILE in ${SDL_BACK_UP[*]}; do cp -f ${SDL_CORE}/_${FILE} ${SDL_CORE}/${FILE}; done
-}
-
-clean_backup() {
-  log "Cleaning up back-up SDL files"
-  for FILE in ${SDL_BACK_UP[*]}; do rm -f ${SDL_CORE}/_${FILE}; done
-  log ${LINE}
-}
-
 create_report_folder() {
   TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
   REPORT_PATH_TS=${REPORT_PATH}/${TIMESTAMP}
@@ -221,7 +198,7 @@ create_report_folder() {
 set_default_params_from_atf_config
 parse_arguments "$@"
 check_arguments
-backup
+
 create_report_folder
 
 if [ $JOBS -gt 1 ] || [ $FORCE_PARALLELS = true ]; then
@@ -233,6 +210,3 @@ fi
 StartUp
 Run
 TearDown
-
-restore
-clean_backup

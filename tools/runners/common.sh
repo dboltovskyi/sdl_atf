@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# SDL files to back-up
+SDL_BACK_UP=("sdl_preloaded_pt.json" "smartDeviceLink.ini" "hmi_capabilities.json" "log4cxx.properties")
+
+# ATF and SDL files/folders to remove before each script run
+ATF_CLEAN_UP=("sdl.pid" "mobile*.out")
+SDL_CLEAN_UP=("*.log" "app_info.dat" "storage" "ivsu_cache" "../sdl_bin_bk")
+
 logf() { log "$@" | tee >(sed "s/\x1b[^m]*m//g" >> ${REPORT_PATH_TS}/${REPORT_FILE}); }
 
 status() {
@@ -74,7 +81,7 @@ run() {
   REPORT_PATH_TS_SCRIPT=${REPORT_PATH_TS}/${ID_SFX}
   mkdir ${REPORT_PATH_TS_SCRIPT}
 
-  local OPTIONS="--sdl-core=${SDL_CORE} --report-path=${REPORT_PATH} $OPTIONS"
+  local OPTIONS="--sdl-core=${SDL_CORE} --report-path=${REPORT_PATH} --sdl-interfaces=${SDL_API}"
   dbg "OPTIONS: "$OPTIONS
 
   ./bin/interp modules/launch.lua \
@@ -179,10 +186,27 @@ await() {
   done
 }
 
+backup() {
+  log "Back-up SDL files"
+  for FILE in ${SDL_BACK_UP[*]}; do cp -n ${SDL_CORE}/${FILE} ${SDL_CORE}/_${FILE}; done
+}
+
+restore() {
+  log "Restoring SDL files from back-up"
+  for FILE in ${SDL_BACK_UP[*]}; do cp -f ${SDL_CORE}/_${FILE} ${SDL_CORE}/${FILE}; done
+}
+
+clean_backup() {
+  log "Cleaning up back-up SDL files"
+  for FILE in ${SDL_BACK_UP[*]}; do rm -f ${SDL_CORE}/_${FILE}; done
+  log ${LINE}
+}
+
 ctrl_c() {
   echo "Scripts processing is cancelled"
   kill_sdl
   copy_logs
+  clean
   clean_atf_logs
   restore
   clean_backup
@@ -192,7 +216,7 @@ ctrl_c() {
 
 function StartUp() {
     trap ctrl_c INT
-
+    backup
     log_test_run_details
 }
 
@@ -201,5 +225,7 @@ function Run() {
 }
 
 function TearDown() {
+    restore
+    clean_backup
     status
 }
