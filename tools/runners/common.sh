@@ -7,7 +7,9 @@ SDL_BACK_UP=("sdl_preloaded_pt.json" "smartDeviceLink.ini" "hmi_capabilities.jso
 ATF_CLEAN_UP=("sdl.pid" "mobile*.out")
 SDL_CLEAN_UP=("*.log" "app_info.dat" "storage" "ivsu_cache" "../sdl_bin_bk")
 
-logf() { log "$@" | tee >(sed "s/\x1b[^m]*m//g" >> ${REPORT_PATH_TS}/${REPORT_FILE}); }
+logf() { log "$@" | tee -a ${REPORT_PATH_TS}/${REPORT_FILE}; }
+
+remove_color() { sed -i "s/\x1b[^m]*m//g" $1; }
 
 status() {
   logf "TOTAL: " $ID
@@ -21,6 +23,7 @@ status() {
   for i in ${LIST_SKIPPED[@]}; do logf "${i//|/ }"; done
   logf ${LINE}
   log
+  remove_color ${REPORT_PATH_TS}/${REPORT_FILE}
 }
 
 log_test_run_details() {
@@ -88,12 +91,20 @@ run() {
     local OPTIONS="--sdl-core=${SDL_CORE} --report-path=${REPORT_PATH} --sdl-interfaces=${SDL_API}"
     dbg "OPTIONS: "$OPTIONS
 
-    ./bin/interp modules/launch.lua \
-      $SCRIPT \
-      $OPTIONS \
-      | tee >(sed "s/\x1b[^m]*m//g" > ${REPORT_PATH_TS_SCRIPT}/${REPORT_FILE_CONSOLE})
+    # Link file descriptors: #6 - stdout, #7 - stderr
+    exec 6>&1 7>&2
+    # Redirect all output to console and file
+    exec > >(tee -a -i ${REPORT_PATH_TS_SCRIPT}/${REPORT_FILE_CONSOLE})
+    # Redirect stderr to stdout
+    exec 2>&1
+    sleep .1
 
-    RESULT_CODE=${PIPESTATUS[0]}
+    ./bin/interp modules/launch.lua $SCRIPT $OPTIONS
+
+    RESULT_CODE=$?
+
+    # Restore stdout, stderr and close file descriptors #6 and #7
+    exec 1>&6 6>&- 2>&7 7>&-
 
   fi
 
@@ -154,6 +165,7 @@ copy_logs() {
   if [ -f $SDL_LOG ]; then
     cp $SDL_LOG ${REPORT_PATH_TS_SCRIPT}/
   fi
+  remove_color ${REPORT_PATH_TS_SCRIPT}/${REPORT_FILE_CONSOLE}
 }
 
 kill_sdl() {
