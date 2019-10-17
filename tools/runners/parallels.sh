@@ -34,6 +34,24 @@ _total_failed=0
 _total_aborted=0
 _total_skipped=0
 
+function timestamp() {
+  echo $(date +%s)
+}
+
+function seconds2time() {
+  T=$1
+  D=$((T/60/60/24))
+  H=$((T/60/60%24))
+  M=$((T/60%60))
+  S=$((T%60))
+  if [[ ${D} != 0 ]]
+  then
+     printf '%d days %02d:%02d:%02d' $D $H $M $S
+  else
+     printf '%02d:%02d:%02d' $H $M $S
+  fi
+}
+
 function set_num_of_workers {
     local num=$(wc -l $_queue | awk '{print $1}')
     echo "Number of scripts to execute: "$num
@@ -286,12 +304,14 @@ function generate_total_report {
         rm -r $env_dir/$worker/TestingReports
     done
 
-    echo "=====================================================================================================" >> $overall_report_file
+    echo "-----------------------------------------------------------------------------------------------------" >> $overall_report_file
     echo "TOTAL: $_overall_test_number" >> $overall_report_file
     echo "PASSED: $_total_passed" >> $overall_report_file
     echo "FAILED: $_total_failed" >> $overall_report_file
     echo "ABORTED: $_total_aborted" >> $overall_report_file
     echo "SKIPPED: $_total_skipped" >> $overall_report_file
+    echo "-----------------------------------------------------------------------------------------------------" >> $overall_report_file
+    echo "Execution time:" $(seconds2time $(($ts_finish - $ts_start))) >> $overall_report_file
     echo "=====================================================================================================" >> $overall_report_file
 
     mv $testing_report_dir/* $_test_result_path/
@@ -311,6 +331,7 @@ function int_handler {
         screen -S $session_pid -X stuff $'\003'
     done
     wait_screen_termination
+    ts_finish=$(timestamp)
     generate_total_report $_tmp_dir
 
     rm $_queue
@@ -318,6 +339,7 @@ function int_handler {
 }
 
 function StartUp() {
+    ts_start=$(timestamp)
     trap 'int_handler' INT
 
     log "Test target: $_testfile"
@@ -340,6 +362,7 @@ function Run() {
 }
 
 function TearDown() {
+    ts_finish=$(timestamp)
     log "Collecting results..."
     generate_total_report $_tmp_dir
 
