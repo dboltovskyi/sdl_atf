@@ -17,15 +17,7 @@ _path_to_atf_parallels="$_path_atf/atf_parallels"
 
 #############################################################
 
-#############################################################
-#   Following variables should be set with CL arguments
-#############################################################
-
-_number_of_workers=1
-_testfile=""
-
-#############################################################
-
+_queue_reference=queue_ref.tmp.txt
 _queue=queue.tmp.txt
 
 _overall_test_number=0
@@ -52,7 +44,7 @@ function seconds2time() {
   fi
 }
 
-function set_num_of_workers {
+function prepare_num_of_workers {
     local num=$(wc -l $_queue | awk '{print $1}')
     echo "Number of scripts to execute: "$num
     echo "Max number of jobs: "$JOBS
@@ -151,12 +143,38 @@ function prepare_queue {
     if [ -f "$_queue" ];then
         rm $_queue
     fi
-    if [ ! -f "$_testfile" ]; then
+
+    if [ -f "$_queue_reference" ];then
+        rm $_queue_reference
+    fi
+
+    if [ -f $_testfile ]; then
+        extension="${_testfile##*.}"
+        if [ $extension = "lua" ]; then
+            echo "$_testfile" > $_queue
+        elif [ $extension = "txt" ]; then
+            cp $_testfile $_queue
+        else
+            log $LINE
+            log "Test target extention can not be recognized: '$_testfile'"
+            exit 1
+        fi
+    elif [ -d $_testfile ]; then
+        find $_testfile -iname "[0-9]*.lua" | sort > $_queue
+        if [ ! -s $_queue ]; then
+            rm $_queue
+            log $LINE
+            log "Failed to find any test scripts in: '$_testfile'"
+            exit 1
+        fi
+    else
         log $LINE
-        log "Test target is not found: '$_testfile'"
+        log "Unsupported test target format: '$_testfile'"
         exit 1
     fi
-    sed '/\.\//!d' $_testfile > $_queue
+
+    sed -E '/^;($|[^.])/d' -i $_queue
+    cp $_queue $_queue_reference
 }
 
 function common {
@@ -167,7 +185,7 @@ function common {
     mkdir $_tmp_dir
 
     prepare_queue
-    set_num_of_workers
+    prepare_num_of_workers
 
     prepare_sdl
     prepare_atf
@@ -202,7 +220,7 @@ function wait_screen_termination_with_progress {
 }
 
 function show_progress {
-    new_state=$(diff -N <(sed -e '$a\' $_queue) <(sed -e '$a\' $_testfile) | tail -n +2 | awk {'print $2'})
+    new_state=$(diff -N <(sed -e '$a\' $_queue) <(sed -e '$a\' $_queue_reference) | tail -n +2 | awk {'print $2'})
     processed=$(diff <(echo "$new_state") <(echo "$_last_state") | tail -n +2 | awk '{print $2}')
 
     if [ -z "$processed" ]; then
@@ -331,10 +349,8 @@ function int_handler {
         screen -S $session_pid -X stuff $'\003'
     done
     wait_screen_termination
-    ts_finish=$(timestamp)
-    generate_total_report $_tmp_dir
 
-    rm $_queue
+    TearDown
     exit 1
 }
 
