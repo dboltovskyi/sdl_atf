@@ -109,7 +109,6 @@ function prepare_atf {
     mkdir $atf_tmp_dir
 
     if [ ! -d "$_path_atf" ]; then
-        log $LINE
         log "Wrong path to ATF: '$_path_atf'"
         exit 1
     fi
@@ -126,7 +125,6 @@ function prepare_atf {
     mkdir $atf_tmp_ts_dir
 
     if [ ! -d "$_path_atf_test_scripts" ]; then
-        log $LINE
         log "Wrong path to ATF test scripts: '$_path_atf_test_scripts'"
         exit 1
     fi
@@ -155,7 +153,6 @@ function prepare_queue {
         elif [ $extension = "txt" ]; then
             cp $_testfile $_queue
         else
-            log $LINE
             log "Test target extention can not be recognized: '$_testfile'"
             exit 1
         fi
@@ -163,12 +160,10 @@ function prepare_queue {
         find $_testfile -iname "[0-9]*.lua" | sort > $_queue
         if [ ! -s $_queue ]; then
             rm $_queue
-            log $LINE
             log "Failed to find any test scripts in: '$_testfile'"
             exit 1
         fi
     else
-        log $LINE
         log "Unsupported test target format: '$_testfile'"
         exit 1
     fi

@@ -73,15 +73,19 @@ $ sudo find / -name qmake
 ## Run:
 ``` ./start.sh SDL TEST [OPTION]... ```
 
-
 - SDL  - path to SDL binaries
 - TEST - test target, could be one of the following:
   - test script
   - test set
   - folder with test scripts
 - [OPTION] - options supported by ATF:
-  - --sdl-interfaces   - path to SDL APIs
+  - --sdl-api          - path to SDL APIs
   - --report-path      - path to report and logs
+  - -j|--jobs n        - number of jobs to start ATF in parallels
+  - --third-party str  - path to SDL third party
+  - --atf-ts str       - path to ATF test scripts
+  - --parallels        - force to use parallels
+  - --tmp              - path to temporary folder used by parallels
 
 In case if folder is specified:
    - only scripts which name starts with number will be taken into account (e.g. 001, 002 etc.)
@@ -92,6 +96,17 @@ Besides execution of test scripts start.sh also does auxiliary actions:
    - backup and restore SDL important files
    - create report with all required logs for each script
 
+### Modes:
+ - Common - test scripts will be run locally
+ - Parallels - test scripts will be run in isolated environments and, if required, in several threads
+
+### Advanced usage:
+`start.sh` is the main application that will decide which runner to use.
+
+A `runner` is a script which defines the main workflow of running a certain test.
+Runners are located at `tools/runners`:
+ - `common.sh` - default runner
+ - `parallels.sh` - runner for parallels mode
 
 ## Documentation generation
 
