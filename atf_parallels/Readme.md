@@ -40,3 +40,4 @@ The following options are required to run docker container:
 ## Dependencies:
  - screen
  - Docker
+ - rsync
