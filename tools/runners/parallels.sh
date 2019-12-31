@@ -233,6 +233,7 @@ function show_progress {
 function clean_up {
     rm -r $_tmp_dir
     rm $_queue
+    rm $_queue_reference
 }
 
 #############################################################
