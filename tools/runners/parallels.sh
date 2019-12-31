@@ -71,6 +71,7 @@ function prepare_sdl {
     cp -r $_path_sdl $_sdl_prepared
 
     if [ ! -z "$_path_3rd_party" ]; then
+        LD_LIBRARY_PATH=$_path_3rd_party/lib:$_path_3rd_party/x86_64/lib:$LD_LIBRARY_PATH \
         ldd $_sdl_prepared/bin/smartDeviceLinkCore \
         | grep "$_path_3rd_party/lib\|$_path_3rd_party/x86_64/lib" \
         | awk '{print $3}' \
@@ -232,6 +233,7 @@ function show_progress {
 function clean_up {
     rm -r $_tmp_dir
     rm $_queue
+    rm $_queue_reference
 }
 
 #############################################################
