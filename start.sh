@@ -59,7 +59,7 @@ get_param_from_atf_config() {
 }
 
 set_default_params_from_atf_config() {
-  local CONFIG_FILE=${ATF_PATH}/modules/config.lua
+  local CONFIG_FILE=${ATF_PATH}/modules/configuration/base_config.lua
   REPORT_PATH=$(get_param_from_atf_config ${CONFIG_FILE} "config.reportPath")
   SDL_CORE=$(get_param_from_atf_config ${CONFIG_FILE} "config.pathToSDL")
   SDL_API=$(get_param_from_atf_config ${CONFIG_FILE} "config.pathToSDLInterfaces")

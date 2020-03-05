@@ -98,8 +98,8 @@ run() {
     # Redirect stderr to stdout
     exec 2>&1
     sleep .1
-
-    ./bin/interp modules/launch.lua $SCRIPT $OPTIONS
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./lib
+    ./ATF modules/launch.lua $SCRIPT $OPTIONS
 
     RESULT_CODE=$?
 

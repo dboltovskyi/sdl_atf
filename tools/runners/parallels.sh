@@ -133,9 +133,9 @@ function prepare_atf {
 
     cp $_path_sdl_api/*.xml $atf_tmp_dir/data
 
-    sed -i '/^config.pathToSDL\ =/c\config.pathToSDL="/home/developer/sdl/bin"' $atf_tmp_dir/modules/config.lua
-    sed -i '/^config.pathToSDLInterfaces\ =/c\config.pathToSDLInterfaces="/home/developer/sdl/atf/data"' $atf_tmp_dir/modules/config.lua
-    sed -i '/^config.reportPath\ =/c\config.reportPath="/home/developer/sdl/TestingReports"' $atf_tmp_dir/modules/config.lua
+    sed -i '/^config.pathToSDL\ =/c\config.pathToSDL="/home/developer/sdl/bin"' $atf_tmp_dir/modules/configuration/base_config.lua
+    sed -i '/^config.pathToSDLInterfaces\ =/c\config.pathToSDLInterfaces="/home/developer/sdl/atf/data"' $atf_tmp_dir/modules/configuration/base_config.lua
+    sed -i '/^config.reportPath\ =/c\config.reportPath="/home/developer/sdl/TestingReports"' $atf_tmp_dir/modules/configuration/base_config.lua
 }
 
 function prepare_queue {
