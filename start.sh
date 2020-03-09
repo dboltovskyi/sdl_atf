@@ -26,19 +26,15 @@ log() { echo -e $@; }
 
 show_help() {
   echo "Bash .lua test Script Runner"
-  echo "Besides execution of scripts it also does auxiliary actions:"
-  echo "   - clean up SDL and ATF folders before running of each script"
-  echo "   - backup and restore SDL important files"
-  echo "   - create report with all required logs for each script"
   echo
-  echo "Usage: start.sh SDL TEST [OPTION]..."
+  echo "Usage: start.sh TEST [OPTION]..."
   echo
-  echo "SDL  - path to SDL binaries"
   echo "TEST - test target, could be one of the following:"
   echo "   - test script"
   echo "   - test set"
   echo "   - folder with test scripts"
   echo "[OPTION] - options supported by ATF:"
+  echo "   --sdl-core         - path to SDL binaries"
   echo "   --sdl-api          - path to SDL APIs"
   echo "   --report-path      - path to report and logs"
   echo "   -j|--jobs n        - number of jobs to start ATF in parallels"
@@ -51,24 +47,29 @@ show_help() {
   echo "   - only scripts which name starts with number will be taken into account (e.g. 001, 002 etc.)"
   echo "   - if there are sub-folders scripts will be run recursively"
   echo
+  echo "Besides execution of .lua scripts Script Runner also does auxiliary actions:"
+  echo "   - clean up SDL and ATF folders before running of each script"
+  echo "   - backup and restore SDL important files"
+  echo "   - create report with all required logs for each script"
+  echo
   exit 0
 }
 
-get_param_from_atf_config() {
-  for i in `sed s'/=/ /g' $1 | grep "$2 " | awk '{print $2}'`; do echo $i | sed 's/"//g'; done
-}
+# get_param_from_atf_config() {
+#   for i in `sed s'/=/ /g' $1 | grep "$2 " | awk '{print $2}'`; do echo $i | sed 's/"//g'; done
+# }
 
-set_default_params_from_atf_config() {
-  local CONFIG_FILE=${ATF_PATH}/modules/configuration/base_config.lua
-  REPORT_PATH=$(get_param_from_atf_config ${CONFIG_FILE} "config.reportPath")
-  SDL_CORE=$(get_param_from_atf_config ${CONFIG_FILE} "config.pathToSDL")
-  SDL_API=$(get_param_from_atf_config ${CONFIG_FILE} "config.pathToSDLInterfaces")
-  SDL_PROCESS_NAME=$(get_param_from_atf_config ${CONFIG_FILE} "config.SDL")
-  dbg "Default arguments from ATF config:"
-  dbg "  SDL_CORE: "$SDL_CORE
-  dbg "  REPORT_PATH: "$REPORT_PATH
-  dbg "  SDL_PROCESS_NAME: "$SDL_PROCESS_NAME
-}
+# set_default_params_from_atf_config() {
+#   local CONFIG_FILE=${ATF_PATH}/modules/configuration/base_config.lua
+#   REPORT_PATH=$(get_param_from_atf_config ${CONFIG_FILE} "config.reportPath")
+#   SDL_CORE=$(get_param_from_atf_config ${CONFIG_FILE} "config.pathToSDL")
+#   SDL_API=$(get_param_from_atf_config ${CONFIG_FILE} "config.pathToSDLInterfaces")
+#   SDL_PROCESS_NAME=$(get_param_from_atf_config ${CONFIG_FILE} "config.SDL")
+#   dbg "Default arguments from ATF config:"
+#   dbg "  SDL_CORE: "$SDL_CORE
+#   dbg "  REPORT_PATH: "$REPORT_PATH
+#   dbg "  SDL_PROCESS_NAME: "$SDL_PROCESS_NAME
+# }
 
 parse_arguments() {
   if [ $# -eq 0 ]; then
@@ -117,6 +118,9 @@ parse_arguments() {
     fi
 
     case "$ARG_KEY" in
+      --config)
+        CONFIG="$ARG_VAL"
+      ;;
       --sdl-core)
         SDL_CORE="$ARG_VAL"
       ;;
@@ -166,29 +170,14 @@ parse_arguments() {
 }
 
 check_arguments() {
-  # check presence of mandatory arguments
-  if [ -z $SDL_CORE ]; then
-    echo "Path to SDL binaries was not specified"
-    exit 1
-  fi
   if [ -z $TEST_TARGET ]; then
     echo "Test target was not specified"
     exit 1
-  fi
-  # check if defined path exists
-  if [ ! -d $SDL_CORE ]; then
-    echo "SDL core binaries was not found by defined path"
-    exit 1
-  fi
-  # add '/' to the end of the path if it missing
-  if [ "${SDL_CORE: -1}" = "/" ]; then
-    SDL_CORE="${SDL_CORE:0:-1}"
   fi
   if [ "${TEST_TARGET: -1}" = "/" ]; then
     TEST_TARGET="${TEST_TARGET:0:-1}"
   fi
   dbg "Updated arguments:"
-  dbg "  SDL_CORE: "$SDL_CORE
   dbg "  TEST_TARGET: "$TEST_TARGET
   dbg "  REPORT_PATH: "$REPORT_PATH
   dbg "  OPTIONS: "$OPTIONS
@@ -206,7 +195,10 @@ check_arguments
 
 create_report_folder
 
-if [ $JOBS -gt 1 ] || [ $FORCE_PARALLELS = true ]; then
+if []; then
+  source tools/runners/common.sh
+  source tools/runners/remote.sh
+elif [ $JOBS -gt 1 ] || [ $FORCE_PARALLELS = true ]; then
   source tools/runners/parallels.sh
 else
   source tools/runners/common.sh
