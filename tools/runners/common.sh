@@ -7,6 +7,8 @@ SDL_BACK_UP=("sdl_preloaded_pt.json" "smartDeviceLink.ini" "hmi_capabilities.jso
 ATF_CLEAN_UP=("sdl.pid" "mobile*.out")
 SDL_CLEAN_UP=("*.log" "app_info.dat" "storage" "ivsu_cache" "../sdl_bin_bk")
 
+OPTIONS="--sdl-core=${SDL_CORE} --report-path=${REPORT_PATH} --sdl-interfaces=${SDL_API}"
+
 logf() { log "$@" | tee -a ${REPORT_PATH_TS}/${REPORT_FILE}; }
 
 remove_color() { sed -i "s/\x1b[^m]*m//g" $1; }
@@ -88,9 +90,6 @@ run() {
 
   if [ ${SCRIPT:0:1} != ";" ]; then
 
-    local OPTIONS="--sdl-core=${SDL_CORE} --report-path=${REPORT_PATH} --sdl-interfaces=${SDL_API}"
-    dbg "OPTIONS: "$OPTIONS
-
     # Link file descriptors: #6 - stdout, #7 - stderr
     exec 6>&1 7>&2
     # Redirect all output to console and file
@@ -139,9 +138,9 @@ run() {
 }
 
 clean_atf_logs() {
-  local REPORT_DIR_PTRNS=("SDLLogs*" "ATFLogs*" "XMLReports*")
+  local REPORT_DIR_PTRNS=("SDLLogs" "ATFLogs" "XMLReports")
   for DIR in ${REPORT_DIR_PTRNS[@]}; do
-    rm -rf ${REPORT_PATH}/$DIR
+    rm -rf ${REPORT_PATH}/$DIR*
   done
 }
 
@@ -153,9 +152,9 @@ clean() {
 }
 
 copy_logs() {
-  local REPORT_DIR_PTRNS=("SDLLogs*" "ATFLogs*" "XMLReports*")
+  local REPORT_DIR_PTRNS=("SDLLogs" "ATFLogs" "XMLReports")
   for PTRN in ${REPORT_DIR_PTRNS[@]}; do
-    for DIR in $(find ${REPORT_PATH} -name "$PTRN"); do
+    for DIR in $(find "${REPORT_PATH}" -name "$PTRN*"); do
       for FILE in $(find $DIR -type f); do
         cp $FILE ${REPORT_PATH_TS_SCRIPT}/
       done

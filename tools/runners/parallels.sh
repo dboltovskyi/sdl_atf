@@ -133,9 +133,12 @@ function prepare_atf {
 
     cp $_path_sdl_api/*.xml $atf_tmp_dir/data
 
-    sed -i '/^config.pathToSDL\ =/c\config.pathToSDL="/home/developer/sdl/bin"' $atf_tmp_dir/modules/configuration/base_config.lua
-    sed -i '/^config.pathToSDLInterfaces\ =/c\config.pathToSDLInterfaces="/home/developer/sdl/atf/data"' $atf_tmp_dir/modules/configuration/base_config.lua
-    sed -i '/^config.reportPath\ =/c\config.reportPath="/home/developer/sdl/TestingReports"' $atf_tmp_dir/modules/configuration/base_config.lua
+    # sed -i '/^config.pathToSDL\ =/c\config.pathToSDL="/home/developer/sdl/bin"' $atf_tmp_dir/modules/configuration/base_config.lua
+    # sed -i '/^config.pathToSDLInterfaces\ =/c\config.pathToSDLInterfaces="/home/developer/sdl/atf/data"' $atf_tmp_dir/modules/configuration/base_config.lua
+    # sed -i '/^config.reportPath\ =/c\config.reportPath="/home/developer/sdl/TestingReports"' $atf_tmp_dir/modules/configuration/base_config.lua
+    _sdl_core_path="/home/developer/sdl/bin"
+    _sdl_api_path="/home/developer/sdl/atf/data"
+    _report_path="/home/developer/sdl/TestingReports"
 }
 
 function prepare_queue {
@@ -366,7 +369,14 @@ function Run() {
     for (( a = 0; a < $_number_of_workers; a++ )); do
         tmpdirname=$(mktemptdir)
         screen_basename=$(basename $tmpdirname)
-        screen -d -m -S $screen_basename $_path_to_atf_parallels/loop.sh $tmpdirname $atf_tmp_ts_dir $_queue
+        screen -d -m -S $screen_basename \
+            $_path_to_atf_parallels/loop.sh \
+            $tmpdirname \
+            $atf_tmp_ts_dir \
+            $_queue \
+            $_sdl_core_path \
+            $_sdl_api_path \
+            $_report_path
         _tmp_workers=$(echo $_tmp_workers" $screen_basename" | xargs)
     done
 

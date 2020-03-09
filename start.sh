@@ -3,11 +3,13 @@
 ATF_PATH=$(cd "$(dirname "$0")" && pwd)
 REPORT_FILE=Report.txt
 REPORT_FILE_CONSOLE=Console.txt
-DEBUG=false
+SDL_PROCESS_NAME="smartDeviceLinkCore"
+DEBUG=true
 LINE="====================================================================================================="
 
 JOBS=1
 FORCE_PARALLELS=false
+FORCE_REMOTE=false
 
 THIRD_PARTY="$THIRD_PARTY_INSTALL_PREFIX"
 ATF_TS_PATH=$(dirname $(realpath test_scripts))
@@ -36,12 +38,13 @@ show_help() {
   echo "[OPTION] - options supported by ATF:"
   echo "   --sdl-core         - path to SDL binaries"
   echo "   --sdl-api          - path to SDL APIs"
-  echo "   --report-path      - path to report and logs"
+  echo "   --report           - path to report and logs"
   echo "   -j|--jobs n        - number of jobs to start ATF in parallels"
-  echo "   --third-party str  - path to SDL third party"
-  echo "   --atf-ts str       - path to ATF test scripts"
-  echo "   --parallels        - force to use parallels"
+  echo "   --third-party      - path to SDL third party"
+  echo "   --atf-ts           - path to ATF test scripts"
+  echo "   --parallels        - force to use parallels mode"
   echo "   --tmp              - path to temporary folder used by parallels"
+  echo "   --remote           - force to use remote connection mode"
   echo
   echo "In case if folder is specified as a test target:"
   echo "   - only scripts which name starts with number will be taken into account (e.g. 001, 002 etc.)"
@@ -54,22 +57,6 @@ show_help() {
   echo
   exit 0
 }
-
-# get_param_from_atf_config() {
-#   for i in `sed s'/=/ /g' $1 | grep "$2 " | awk '{print $2}'`; do echo $i | sed 's/"//g'; done
-# }
-
-# set_default_params_from_atf_config() {
-#   local CONFIG_FILE=${ATF_PATH}/modules/configuration/base_config.lua
-#   REPORT_PATH=$(get_param_from_atf_config ${CONFIG_FILE} "config.reportPath")
-#   SDL_CORE=$(get_param_from_atf_config ${CONFIG_FILE} "config.pathToSDL")
-#   SDL_API=$(get_param_from_atf_config ${CONFIG_FILE} "config.pathToSDLInterfaces")
-#   SDL_PROCESS_NAME=$(get_param_from_atf_config ${CONFIG_FILE} "config.SDL")
-#   dbg "Default arguments from ATF config:"
-#   dbg "  SDL_CORE: "$SDL_CORE
-#   dbg "  REPORT_PATH: "$REPORT_PATH
-#   dbg "  SDL_PROCESS_NAME: "$SDL_PROCESS_NAME
-# }
 
 parse_arguments() {
   if [ $# -eq 0 ]; then
@@ -124,7 +111,7 @@ parse_arguments() {
       --sdl-core)
         SDL_CORE="$ARG_VAL"
       ;;
-      --report-path)
+      --report)
         REPORT_PATH="$ARG_VAL"
       ;;
       --sdl-api)
@@ -144,6 +131,9 @@ parse_arguments() {
       ;;
       --tmp)
         TMP_PATH="$ARG_VAL"
+      ;;
+      --remote)
+        FORCE_REMOTE=true
       ;;
       -h|--help|-help|--h)
         show_help
@@ -184,25 +174,27 @@ check_arguments() {
 }
 
 create_report_folder() {
-  TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
-  REPORT_PATH_TS=${REPORT_PATH}/${TIMESTAMP}
+  REPORT_PATH_TS=${REPORT_PATH}/$(date +"%Y-%m-%d_%H-%M-%S")
   mkdir -p ${REPORT_PATH_TS}
 }
 
-set_default_params_from_atf_config
 parse_arguments "$@"
 check_arguments
 
 create_report_folder
 
-if []; then
-  source tools/runners/common.sh
+if [ $FORCE_REMOTE = true ]; then
+  dbg "Remote mode"
   source tools/runners/remote.sh
 elif [ $JOBS -gt 1 ] || [ $FORCE_PARALLELS = true ]; then
+  dbg "Parallels mode"
   source tools/runners/parallels.sh
 else
+  dbg "Regular mode"
   source tools/runners/common.sh
 fi
+
+dbg "OPTIONS: "$OPTIONS
 
 StartUp
 Run

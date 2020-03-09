@@ -3,11 +3,16 @@
 _tmpdirname=$1; shift
 _atf_ts_dir=$1; shift
 _queue=$1; shift
+_sdl_core_path=$1; shift
+_sdl_api_path=$1; shift
+_report_path=$1; shift
 
 _lockfile=.lock
 
 _image_name=atf_worker
 _container_name=$(basename $_tmpdirname)
+
+
 
 ####################################################################
 #   The following code has to be run in several different processes
@@ -74,7 +79,11 @@ function main {
 
         [ -z "$script_name" ] && break;
 
-        docker_run $script_name
+        docker_run $script_name \
+            --sdl-core=$_sdl_core_path \
+            --sdl-api=$_sdl_api_path \
+            --report=$_report_path
+
         sleep 0.1
     done
 }
