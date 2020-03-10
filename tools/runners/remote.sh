@@ -2,7 +2,28 @@
 
 source tools/runners/common.sh
 
-OPTIONS="--config=${CONFIG} --report-path=${REPORT_PATH} --sdl-interfaces=${SDL_API}"
+dummy() { :; }
 
-SDL_BACK_UP=()
-SDL_CLEAN_UP=()
+kill_sdl() {
+  dummy
+}
+
+clean_sdl_folder() {
+  dummy
+}
+
+copy_sdl_logs() {
+  dummy
+}
+
+backup() {
+  dummy
+}
+
+clean_backup() {
+  dummy
+}
+
+restore() {
+  dummy
+}

@@ -8,7 +8,7 @@
   --sdl-api=$(readlink -m ~/ramdrv/sdl_core/src/components/interfaces) \
   --report=$(readlink -m ~/ramdrv/TestingReports) \
   --tmp=$(readlink -m ~/ramdrv/Tmp) \
-  --jobs 1 #\
+  --jobs 1 \
   # --parallels
 
 ## Remote
@@ -19,4 +19,3 @@
 #   --sdl-api=$(readlink -m ~/ramdrv/sdl_core/src/components/interfaces) \
 #   --report=$(readlink -m ~/ramdrv/TestingReports) \
 #   --remote
-

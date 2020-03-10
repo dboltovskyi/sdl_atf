@@ -7,8 +7,6 @@ SDL_BACK_UP=("sdl_preloaded_pt.json" "smartDeviceLink.ini" "hmi_capabilities.jso
 ATF_CLEAN_UP=("sdl.pid" "mobile*.out")
 SDL_CLEAN_UP=("*.log" "app_info.dat" "storage" "ivsu_cache" "../sdl_bin_bk")
 
-OPTIONS="--sdl-core=${SDL_CORE} --report-path=${REPORT_PATH} --sdl-interfaces=${SDL_API}"
-
 logf() { log "$@" | tee -a ${REPORT_PATH_TS}/${REPORT_FILE}; }
 
 remove_color() { sed -i "s/\x1b[^m]*m//g" $1; }
@@ -74,7 +72,9 @@ run() {
 
   kill_sdl
 
-  clean
+  clean_atf_folder
+
+  clean_sdl_folder
 
   clean_atf_logs
 
@@ -144,11 +144,21 @@ clean_atf_logs() {
   done
 }
 
-clean() {
+clean_atf_folder() {
   log "Cleaning up ATF folder"
   for FILE in ${ATF_CLEAN_UP[*]}; do rm -rf ${ATF_PATH}/${FILE}; done
+}
+
+clean_sdl_folder() {
   log "Cleaning up SDL folder"
   for FILE in ${SDL_CLEAN_UP[*]}; do rm -rf ${SDL_CORE}/${FILE}; done
+}
+
+copy_sdl_logs() {
+  local SDL_LOG=$SDL_CORE/SmartDeviceLinkCore.log
+  if [ -f $SDL_LOG ]; then
+    cp $SDL_LOG ${REPORT_PATH_TS_SCRIPT}/
+  fi
 }
 
 copy_logs() {
@@ -160,11 +170,8 @@ copy_logs() {
       done
     done
   done
-  local SDL_LOG=$SDL_CORE/SmartDeviceLinkCore.log
-  if [ -f $SDL_LOG ]; then
-    cp $SDL_LOG ${REPORT_PATH_TS_SCRIPT}/
-  fi
   remove_color ${REPORT_PATH_TS_SCRIPT}/${REPORT_FILE_CONSOLE}
+  copy_sdl_logs
 }
 
 kill_sdl() {
@@ -222,7 +229,8 @@ ctrl_c() {
   echo "Scripts processing is cancelled"
   kill_sdl
   copy_logs
-  clean
+  clean_atf_folder
+  clean_sdl_folder
   clean_atf_logs
   restore
   clean_backup
@@ -231,17 +239,17 @@ ctrl_c() {
 }
 
 function StartUp() {
-    trap ctrl_c INT
-    backup
-    log_test_run_details
+  trap ctrl_c INT
+  backup
+  log_test_run_details
 }
 
 function Run() {
-    process
+  process
 }
 
 function TearDown() {
-    restore
-    clean_backup
-    status
+  restore
+  clean_backup
+  status
 }

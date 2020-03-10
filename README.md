@@ -57,6 +57,9 @@ $ sudo apt-get install qt59base qt59websockets
 - Run `make`
 - Run `make install`
 
+**4** Copy content of scripts repository
+- Run `cp -r <path_to_sdl_atf_test_scripts>/* .`
+
 ## Configuration of ATF
 
 ATF configuration is setting up in `modules/configuration` folder.
@@ -70,24 +73,24 @@ They can override one or more described configuration files.
 ## Run:
 
 ```
-./start.sh [SDL] TEST [OPTIONS]...
+./start.sh TEST [OPTIONS]...
 ```
 
-- [SDL] - path to SDL binaries
 - TEST - test target, could be one of the following:
   - test script
   - test set
   - folder with test scripts
 - [OPTIONS] - options supported by ATF:
   - --sdl-core         - path to SDL binaries
+  - --config           - name of configuration
   - --sdl-api          - path to SDL APIs
-  - --report-path      - path to report and logs
+  - --report           - path to report and logs
+  - --parallels        - force to use parallels
   - -j|--jobs n        - number of jobs to start ATF in parallels
   - --third-party str  - path to SDL third party
   - --atf-ts str       - path to ATF test scripts
-  - --parallels        - force to use parallels
   - --tmp              - path to temporary folder used by parallels
-  - --config           - name of the configuration
+  - --remote           - force to use remote connection mode
 
 In case if folder is specified:
    - only scripts which name starts with number will be taken into account (e.g. 001, 002 etc.)

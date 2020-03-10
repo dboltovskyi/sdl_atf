@@ -4,7 +4,7 @@ ATF_PATH=$(cd "$(dirname "$0")" && pwd)
 REPORT_FILE=Report.txt
 REPORT_FILE_CONSOLE=Console.txt
 SDL_PROCESS_NAME="smartDeviceLinkCore"
-DEBUG=true
+DEBUG=false
 LINE="====================================================================================================="
 
 JOBS=1
@@ -14,6 +14,7 @@ FORCE_REMOTE=false
 THIRD_PARTY="$THIRD_PARTY_INSTALL_PREFIX"
 ATF_TS_PATH=$(dirname $(realpath test_scripts))
 TMP_PATH=/tmp
+REPORT_PATH=./TestingReports
 
 # Color modifications
 P="\033[0;32m" # GREEN
@@ -22,7 +23,7 @@ A="\033[0;35m" # MAGENTA
 S="\033[0;33m" # YELLOW
 N="\033[0m"    # NONE
 
-dbg() { if [ $DEBUG = true ]; then echo "$@"; fi }
+dbg() { if [ $DEBUG = true ]; then echo "DEBUG: $@"; fi }
 
 log() { echo -e $@; }
 
@@ -37,12 +38,13 @@ show_help() {
   echo "   - folder with test scripts"
   echo "[OPTION] - options supported by ATF:"
   echo "   --sdl-core         - path to SDL binaries"
+  echo "   --config           - name of configuration"
   echo "   --sdl-api          - path to SDL APIs"
   echo "   --report           - path to report and logs"
+  echo "   --parallels        - force to use parallels mode"
   echo "   -j|--jobs n        - number of jobs to start ATF in parallels"
   echo "   --third-party      - path to SDL third party"
   echo "   --atf-ts           - path to ATF test scripts"
-  echo "   --parallels        - force to use parallels mode"
   echo "   --tmp              - path to temporary folder used by parallels"
   echo "   --remote           - force to use remote connection mode"
   echo
@@ -138,12 +140,6 @@ parse_arguments() {
       -h|--help|-help|--h)
         show_help
       ;;
-      -*)
-        local DLM=""
-        if [ -n "$ARG_VAL" ]; then DLM="="; fi
-        if [ -n "${OPTIONS}" ]; then OPTIONS="${OPTIONS} "; fi
-        OPTIONS="${OPTIONS}${ARG_KEY}${DLM}${ARG_VAL}"
-      ;;
       *)
         let NAMELESS_COUNTER=NAMELESS_COUNTER+1
         NAMELESS_ARGS[NAMELESS_COUNTER]="$ARG_VAL"
@@ -153,9 +149,6 @@ parse_arguments() {
   # handle nameless arguments
   if [ ${#NAMELESS_ARGS[*]} -eq 1 ]; then
     TEST_TARGET=${NAMELESS_ARGS[1]}
-  elif [ ${#NAMELESS_ARGS[*]} -ge 2 ]; then
-    SDL_CORE=${NAMELESS_ARGS[1]}
-    TEST_TARGET=${NAMELESS_ARGS[2]}
   fi
 }
 
@@ -167,10 +160,30 @@ check_arguments() {
   if [ "${TEST_TARGET: -1}" = "/" ]; then
     TEST_TARGET="${TEST_TARGET:0:-1}"
   fi
-  dbg "Updated arguments:"
-  dbg "  TEST_TARGET: "$TEST_TARGET
-  dbg "  REPORT_PATH: "$REPORT_PATH
-  dbg "  OPTIONS: "$OPTIONS
+  if [ -n "$CONFIG" ] && [ -n "$SDL_CORE" ] ; then
+    echo "Invalid options combination: --config and --sdl-core"
+    exit 1
+  fi
+  if [ $FORCE_REMOTE = true ] && [ -n "$SDL_CORE" ] ; then
+    echo "Invalid options combination: --remote and --sdl-core"
+    exit 1
+  fi
+  if [ $FORCE_REMOTE = true ] && [ $FORCE_PARALLELS = true ] ; then
+    echo "Invalid options combination: --remote and --parallels"
+    exit 1
+  fi
+
+  OPTIONS=""
+  if [ -n "$CONFIG" ]; then OPTIONS="$OPTIONS --config=${CONFIG}"; fi
+  if [ -n "$SDL_CORE" ]; then OPTIONS="$OPTIONS --sdl-core=${SDL_CORE}"; fi
+  if [ -n "$REPORT_PATH" ]; then OPTIONS="$OPTIONS --report-path=${REPORT_PATH}"; fi
+  if [ -n "$SDL_API" ]; then OPTIONS="$OPTIONS --sdl-interfaces=${SDL_API}"; fi
+  if [ $FORCE_REMOTE = true ]; then OPTIONS="$OPTIONS --storeFullSDLLogs"; fi
+
+  dbg "Parameters:"
+  dbg "TEST_TARGET: "$TEST_TARGET
+  dbg "REPORT_PATH: "$REPORT_PATH
+  dbg "OPTIONS: "$OPTIONS
 }
 
 create_report_folder() {
@@ -179,23 +192,24 @@ create_report_folder() {
 }
 
 parse_arguments "$@"
+
 check_arguments
 
 create_report_folder
 
 if [ $FORCE_REMOTE = true ]; then
-  dbg "Remote mode"
+  dbg "Mode: Remote"
   source tools/runners/remote.sh
 elif [ $JOBS -gt 1 ] || [ $FORCE_PARALLELS = true ]; then
-  dbg "Parallels mode"
+  dbg "Mode: Parallels"
   source tools/runners/parallels.sh
 else
-  dbg "Regular mode"
+  dbg "Mode: Regular"
   source tools/runners/common.sh
 fi
 
-dbg "OPTIONS: "$OPTIONS
-
 StartUp
+
 Run
+
 TearDown

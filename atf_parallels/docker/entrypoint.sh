@@ -15,7 +15,6 @@ chgrp developer /home/developer
 export HOME=/home/developer
 
 echo "export LANG=en_US.UTF-8" >> /home/developer/.profile
-echo "export LD_LIBRARY_PATH=." >> /home/developer/.profile
 
 cd /home/developer/sdl/atf
 sudo -E -u developer ./start.sh "$@"
