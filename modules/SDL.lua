@@ -661,6 +661,7 @@ function SDL:StopSDL()
     sdl_logger.close()
   end
   sleep(1)
+  SDL:DeleteFile()
 end
 
 function SDL.ForceStopSDL()

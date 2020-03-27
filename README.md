@@ -24,14 +24,14 @@ ldoc                   | MIT/X11
 git clone --recurse-submodules https://github.com/smartdevicelink/sdl_atf
 ```
 ## Compilation:
-**1** Install 3d-parties developers libraries
+**1.** Install 3d-parties developers libraries
 - Run the following commands :
 ```
 $ sudo apt-get install lua5.2 liblua5.2-dev libxml2-dev lua-lpeg-dev
 $ sudo apt-get install openssl libssl1.0-dev
 ```
 
-**2** Install Qt5.9+
+**2.** Install Qt5.9+
 - For Ubuntu `18.04`:
     - Run the following command :
 ```
@@ -46,13 +46,16 @@ $ sudo apt-get update
 $ sudo apt-get install qt59base qt59websockets
 ```
 
-**3** Build ATF
+**3.** Build ATF
 CMake 3.15 or newer is required to generate the build files and can be downloaded from [here](https://cmake.org/download/).
 - Create a build folder outside of the sdl_atf folder
 - cd into your build folder
 - Run `cmake ../sdl_atf`
 - Run `make`
 - Run `make install`
+
+**4.** Copy content of scripts repository
+- Run `cp -r <path_to_sdl_atf_test_scripts>/* .`
 
 ## Configuration of ATF
 ATF configuration is setting up in `modules/configuration` folder.
@@ -65,23 +68,58 @@ They can override one or more described configuration files.
 
 ## Run:
 
-1. Copy `RemoteTestingAdapterServer` folder to SDL host and run `RemoteTestingAdapterServer` on that host
-
-2. Start ATF script:
 ```
-./start.sh [--config=<config_name>] [options] [script file name]
+./start.sh TEST [OPTIONS]...
 ```
 
-where `<config_name>` is one of the following values: `local`, `remote_linux`, `remote_qnx`
+- TEST - test target, could be one of the following:
+  - test script
+  - test set
+  - folder with test scripts
+- [OPTIONS] - options supported by ATF:
+  - --sdl-core         - path to SDL binaries
+  - --config           - name of configuration
+  - --sdl-api          - path to SDL APIs
+  - --report           - path to report and logs
+  - --parallels        - force to use parallels
+  - -j|--jobs n        - number of jobs to start ATF in parallels
+  - --third-party str  - path to SDL third party
+  - --atf-ts str       - path to ATF test scripts
+  - --tmp              - path to temporary folder used by parallels
+  - --remote           - force to use remote connection mode
+
+In case if folder is specified:
+   - only scripts which name starts with number will be taken into account (e.g. 001, 002 etc.)
+   - if there are sub-folders scripts will be run recursively
+
+Besides execution of test scripts start.sh also does auxiliary actions:
+   - clean up SDL and ATF folders before running of each script
+   - backup and restore SDL important files
+   - create report with all required logs for each script
+
+### Modes:
+ - Common - test scripts will be run locally
+ - Parallels - test scripts will be run locally in isolated environments and, if required, in several threads
+ - Remote - test scripts will be run using remote connection.
+   In this mode `RemoteTestingAdapterServer` should be run on the same host as SDL
+
+### Advanced usage:
+`start.sh` is the main application that will decide which runner to use.
+
+A `runner` is a script which defines the main workflow of running a certain test.
+Runners are located at `tools/runners`:
+ - `common.sh` - default runner
+ - `parallels.sh` - runner for parallels mode
+ - `remote.sh` - runner for remote connection mode
 
 ## Documentation generation
 ### Download and install [ldoc](stevedonovan.github.io/ldoc/manual/doc.md.html)
 ```
-sudo apt install luarocks
-sudo luarocks install luasec
-sudo luarocks install penlight
-sudo luarocks install ldoc
-sudo luarocks install discount
+$ sudo apt install luarocks
+$ sudo luarocks install luasec
+$ sudo luarocks install penlight
+$ sudo luarocks install ldoc
+$ sudo luarocks install discount
 ```
 ### Generate ATF documentation
 ```
@@ -91,60 +129,5 @@ ldoc -c docs/config.ld .
 ### Open documentation
 ```chromium-browser docs/html/index.html```
 
-### Useful options:
-#### Path to SDL
-You can setup path to SDL via command line with ```--sdl-core``` option.
-
-**Example :**
-```
-./start.sh --sdl-core=/home/user/development/sdl/build/bin ./test_scripts/ActivationDuringActiveState.lua
-```
-
-Or via config file(```modules/base_config.lua```) with config parameter
-
-**Example :**
-*ATF config : modules/config.lua :*
-```
-config.pathToSDL = "home/user/development/sdl/build/bin"
-```
-Usage example:
-```
-./start.sh -clocal_config.lua ATF_script.lua
-```
-
-#### Connect ATF to already started SDL
-ATF is able to connect to already started SDL.
-Note that you should be sure that:
- - ATF is configured not to start SDL
- - SDL is configured not to start HMI
- - mobile and HMI sockets options match each other in SDL and ATF configs.
-
-**Example :**
-
-*ATF config : modules/base_config.lua :*
-```
-config.autorunSDL = false
-config.hmiUrl = "ws://localhost"
-config.hmiPort = 8087
-config.mobileHost = "localhost"
-config.mobilePort = 12345
-config.wsMobileURL = "ws://localhost"
-config.wsMobilePort = 2020
-config.wssMobileURL = "wss://localhost"
-config.wssMobilePort = 2020
-```
-
-*SDL config : smartDeviceLink.ini :*
-```
-[HMI]
-; Open the $LinkToWebHMI in chromium browser
-LaunchHMI = false
-; WebSocket connection address and port
-ServerAddress = 127.0.0.1
-ServerPort = 8087
-[TransportManager]
-; Listening port form incoming TCP mobile connection
-TCPAdapterPort = 12345
-```
-## Run tests
+## Run Unit Tests
 ``` make test```
