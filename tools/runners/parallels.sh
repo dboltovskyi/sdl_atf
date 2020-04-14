@@ -15,6 +15,7 @@ _path_atf_test_scripts="$ATF_TS_PATH"
 _save_sdl_log="$SAVE_SDL_LOG"
 _copy_ts="$COPY_TS"
 _path_to_atf_parallels="$_path_atf/atf_parallels"
+_test_id_file=.test_id
 
 #############################################################
 
@@ -180,6 +181,8 @@ function common {
     if [ -d "$_tmp_dir" ]; then
         rm -r "$_tmp_dir"
     fi
+    rm -f "$_test_id_file"
+
     mkdir $_tmp_dir
 
     prepare_queue
@@ -243,6 +246,7 @@ function clean_up {
     rm -r $_tmp_dir
     rm $_queue
     rm $_queue_reference
+    rm $_test_id_file
 }
 
 #############################################################
@@ -252,15 +256,16 @@ function clean_up {
 function process_report {
     #   overall_report_file - defined in generate_total_report()
 
-    curr_report_file=$1; shift
+    local curr_report_file=$1; shift
+    local dir_number=$1; shift
 
-    test_target=$(cat $curr_report_file | grep "Test target:" | awk '{print $3}')
+    local test_target=$(cat $curr_report_file | grep "Test target:" | awk '{print $3}')
 
-    total_tests=$(cat $curr_report_file | grep "TOTAL:" | awk '{print $2}')
-    passed_tests=$(cat $curr_report_file | grep "PASSED:" | awk '{print $2}')
-    failed_tests=$(cat $curr_report_file | grep "FAILED:" | awk '{print $2}')
-    aborted_tests=$(cat $curr_report_file | grep "ABORTED:" | awk '{print $2}')
-    skipped_tests=$(cat $curr_report_file | grep "SKIPPED:" | awk '{print $2}')
+    local total_tests=$(cat $curr_report_file | grep "TOTAL:" | awk '{print $2}')
+    local passed_tests=$(cat $curr_report_file | grep "PASSED:" | awk '{print $2}')
+    local failed_tests=$(cat $curr_report_file | grep "FAILED:" | awk '{print $2}')
+    local aborted_tests=$(cat $curr_report_file | grep "ABORTED:" | awk '{print $2}')
+    local skipped_tests=$(cat $curr_report_file | grep "SKIPPED:" | awk '{print $2}')
 
     ((_overall_test_number+=total_tests))
     ((_total_passed+=passed_tests))
@@ -284,15 +289,6 @@ function process_report {
     return 0
 }
 
-function test_dir_name {
-    #   total_number_of_tests - defined in generate_total_report()
-
-    dir_number=$1; shift
-
-    ((number_of_zeroes=${#total_number_of_tests}-${#dir_number}))
-    echo $(yes 0 | head -n $number_of_zeroes | paste -s -d '' -)$dir_number
-}
-
 function generate_total_report {
     env_dir=$1; shift
 
@@ -300,7 +296,6 @@ function generate_total_report {
     mkdir $testing_report_dir
 
     total_number_of_tests=$(find $env_dir/*/TestingReports/* -maxdepth 0 -type d | wc -l)
-    dir_number=1
 
     overall_report_file=$testing_report_dir/Report.txt
     echo "=====================================================================================================" > $overall_report_file
@@ -312,21 +307,23 @@ function generate_total_report {
         fi
         for item in $(ls $env_dir/$worker/TestingReports)
         do
-            abs_path=$env_dir/$worker/TestingReports/$item
-            process_report $abs_path/Report.txt
+            local abs_path=$env_dir/$worker/TestingReports/$item
+            local dir_number=$(basename $(find $abs_path -maxdepth 1 -type d | sort -r | head -n 1))
+            local dir_number_lead_zeroes=$(printf "%0${#total_number_of_tests}d" $dir_number)
+            process_report $abs_path/Report.txt $dir_number_lead_zeroes
             process_report_status=$?
 
-            current_test_dirname=$testing_report_dir/$(test_dir_name $dir_number $total_number_of_tests)
-            mv $abs_path/1 $current_test_dirname
+            local current_test_dirname=$testing_report_dir/$dir_number_lead_zeroes
+            mv $abs_path/$dir_number $current_test_dirname
             if [ $process_report_status != 0 ]; then
-                mv $abs_path/Report.txt $current_test_dirname
+                mv $abs_path/Report.txt $current_test_dirname/
             fi
-
-            ((dir_number+=1))
             rm -r $abs_path
         done
         rm -r $env_dir/$worker/TestingReports
     done
+
+    sort -o $overall_report_file $overall_report_file
 
     echo "-----------------------------------------------------------------------------------------------------" >> $overall_report_file
     echo "TOTAL: $_overall_test_number" >> $overall_report_file
@@ -380,7 +377,8 @@ function Run() {
             $tmpdirname \
             $atf_tmp_ts_dir \
             $_queue \
-            $_save_sdl_log
+            $_save_sdl_log \
+            $_test_id_file
         _tmp_workers=$(echo $_tmp_workers" $screen_basename" | xargs)
     done
 

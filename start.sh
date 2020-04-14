@@ -149,6 +149,9 @@ parse_arguments() {
       -h|--help|-help|--h)
         show_help
       ;;
+      --test-id)
+        TEST_ID="$ARG_VAL"
+      ;;
       *)
         let NAMELESS_COUNTER=NAMELESS_COUNTER+1
         NAMELESS_ARGS[NAMELESS_COUNTER]="$ARG_VAL"
@@ -227,6 +230,8 @@ build_parameters() {
   set_param SDL_API "config.pathToSDLInterfaces" ${CONFIG_PATH}/base_config.lua
   set_param IS_REMOTE_ENABLED "config.remoteConnection.enabled" ${CONFIG_PATH}/connection_config.lua
   print_parameters "base config"
+
+  dbg "TEST_ID: "$TEST_ID
 
   dbg "Func" "build_parameters" "Exit"
 }
