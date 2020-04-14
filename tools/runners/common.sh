@@ -81,6 +81,7 @@ run() {
   restore
 
   local ID_SFX=$(printf "%0${#NUM_OF_SCRIPTS}d" $ID)
+  if [ -n "$TEST_ID" ]; then ID_SFX=$TEST_ID; fi
 
   REPORT_PATH_TS_SCRIPT=${REPORT_PATH_TS}/${ID_SFX}
   mkdir ${REPORT_PATH_TS_SCRIPT}

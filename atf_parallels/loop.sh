@@ -4,13 +4,12 @@ _tmpdirname=$1; shift
 _atf_ts_dir=$1; shift
 _queue=$1; shift
 _save_sdl_log=$1; shift
+_test_id_file=$1; shift
 
 _lockfile=.lock
 
 _image_name=atf_worker
 _container_name=$(basename $_tmpdirname)
-
-
 
 ####################################################################
 #   The following code has to be run in several different processes
@@ -36,21 +35,27 @@ function docker_stop {
 }
 
 function pop {
-    FILE=$1
+    local FILE=$1
+    local RES=1
     if (set -o noclobber; echo "$$" > "$_lockfile") 2> /dev/null; then
         trap 'rm -f "$_lockfile"; exit $?' TERM EXIT
 
-        LINE=$(head -n 1 $FILE | awk '{print $1}')
-        sed -i '1d' $FILE
-
-        echo $LINE
-        sleep 0.2
+        local LINE=$(head -n 1 $FILE | awk '{print $1}')
+        if [ -n "$LINE" ]; then
+            sed -i '1d' $FILE
+            RES=0
+            if [ -z $_test_id_file ]; then echo 0 > $_test_id_file; fi
+            local CURRENT_ID=$(cat $_test_id_file)
+            let CURRENT_ID=CURRENT_ID+1
+            echo $CURRENT_ID > $_test_id_file
+            echo $CURRENT_ID $LINE
+        else
+            RES=2
+        fi
         rm -f "$_lockfile"
         trap - TERM EXIT
-        return 0
-    else
-        return 1
     fi
+    return $RES
 }
 
 function int_handler() {
@@ -69,15 +74,20 @@ function main {
     trap 'int_handler' INT
 
     while true; do
-        script_name=$(pop $_queue)
-        if [[ ! $? == 0 ]]; then
-            sleep 0.1
-            continue
+        row=$(pop $_queue)
+        local res=$?
+
+        if [ $res == 1 ]; then
+            sleep 0.2;
+            continue;
+        elif [ $res == 2 ]; then
+            break;
         fi
 
-        [ -z "$script_name" ] && break;
+        local script_num=$(echo $row | awk '{print $1}')
+        local script_name=$(echo $row | awk '{print $2}')
 
-        docker_run $script_name $([ "$_save_sdl_log" = false ] && echo "--no-sdl-log")
+        docker_run $script_name $([ "$_save_sdl_log" = false ] && echo "--no-sdl-log") --test-id $script_num
 
         sleep 0.1
     done
