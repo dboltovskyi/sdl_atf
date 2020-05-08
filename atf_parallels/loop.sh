@@ -1,5 +1,6 @@
 #!/bin/bash
 
+_sdl_prepared=$1; shift
 _tmpdirname=$1; shift
 _atf_ts_dir=$1; shift
 _queue=$1; shift
@@ -23,6 +24,7 @@ function docker_run {
         -e LOCAL_USER_ID=`id -u $USER` \
         -v $_atf_ts_dir:/home/developer/atf_ts \
         -v $_tmpdirname:/home/developer/sdl \
+        -v $_sdl_prepared:/home/developer/sdl_ext \
         $_image_name "$@"
 }
 
