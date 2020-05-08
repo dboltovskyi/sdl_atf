@@ -194,7 +194,23 @@ function common {
 
 function mktemptdir {
     tmpdirname=$(mktemp --suffix=_worker --tmpdir=$_tmp_dir -d)
-    cp -r $_sdl_prepared/* $tmpdirname/
+
+    mkdir -p $tmpdirname/bin
+
+    cp $_sdl_prepared/bin/hmi_capabilities.json $tmpdirname/bin/
+    cp $_sdl_prepared/bin/log4cxx.properties $tmpdirname/bin/
+    cp $_sdl_prepared/bin/*.pem $tmpdirname/bin/
+    cp $_sdl_prepared/bin/sdl_preloaded_pt.json $tmpdirname/bin/
+    cp $_sdl_prepared/bin/smartDeviceLink.ini $tmpdirname/bin/
+
+    ln -s ../../sdl_ext/bin/audio.8bit.wav $tmpdirname/bin/audio.8bit.wav
+    ln -s ../../sdl_ext/bin/build_config.txt $tmpdirname/bin/build_config.txt
+    ln -s ../../sdl_ext/bin/smartDeviceLinkCore $tmpdirname/bin/smartDeviceLinkCore
+
+    for f in $(find $_sdl_prepared/bin/ -name "lib*"); do
+      ln -s ../../sdl_ext/bin/$(basename $f) $tmpdirname/bin/
+    done
+
     cp -r $atf_tmp_dir $tmpdirname/
 
     if [ "$_copy_ts" = true ]; then
@@ -374,6 +390,7 @@ function Run() {
         screen_basename=$(basename $tmpdirname)
         screen -d -m -S $screen_basename \
             $_path_to_atf_parallels/loop.sh \
+            $_sdl_prepared \
             $tmpdirname \
             $atf_tmp_ts_dir \
             $_queue \
