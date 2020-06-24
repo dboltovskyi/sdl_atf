@@ -7,7 +7,7 @@ RUN apt-get update && apt-get -q -y install locales sudo
 RUN apt-get update && apt-get -q -y install libssl1.0.0 libusb-1.0-0 libbluetooth3 \
   libssl-doc- libusb-1.0-doc- manpages- manpages-dev-
 
-RUN apt-get update && apt-get -q -y install openssl liblua5.2-0 psmisc \
+RUN apt-get update && apt-get -q -y install openssl liblua5.2-0 psmisc libexpat1-dev \
   autotools-dev- binutils- build-essential- bzip2- cpp- cpp-5- dpkg-dev- fakeroot- \
   manpages- manpages-dev-
 
