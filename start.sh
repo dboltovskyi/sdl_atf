@@ -4,8 +4,8 @@ ATF_PATH=$(cd "$(dirname "$0")" && pwd)
 REPORT_FILE=Report.txt
 REPORT_FILE_CONSOLE=Console.txt
 DEBUG=false
-LINE1="====================================================================================================="
-LINE2="-----------------------------------------------------------------------------------------------------"
+LINE1=$(printf -- '=%.0s' {1..100})
+LINE2=$(printf -- '-%.0s' {1..100})
 
 JOBS=1
 FORCE_PARALLELS=false
@@ -23,9 +23,13 @@ A="\033[0;35m" # MAGENTA
 S="\033[0;33m" # YELLOW
 N="\033[0m"    # NONE
 
-dbg() { if [ $DEBUG = true ]; then echo "DEBUG: $@"; fi }
+dbg() {
+  if [ $DEBUG = true ]; then echo "DEBUG: $@"; fi
+}
 
-log() { echo -e $@; }
+log() {
+  echo -e $@;
+}
 
 timestamp() {
   echo $(date +%s)
@@ -210,6 +214,10 @@ check_arguments() {
   fi
   if [ ! -d ${ATF_PATH}/modules/configuration/${CONFIG} ]; then
     echo "Invalid configuration was specified within --config option"
+    exit 1
+  fi
+  if ( [ $FORCE_PARALLELS = true ] || [ $JOBS -gt 1 ] ) && [ -z "$(docker images | grep 'atf_worker')" ]; then
+    echo "Required docker image 'atf_worker' is not available"
     exit 1
   fi
   dbg "Func" "check_arguments" "Exit"
