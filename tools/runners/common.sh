@@ -12,25 +12,25 @@ logf() { log "$@" | tee -a ${REPORT_PATH_TS}/${REPORT_FILE}; }
 remove_color() { sed -i "s/\x1b[^m]*m//g" $1; }
 
 status() {
+  logf ${LINE1}
+  logf "Test target:" $TEST_TARGET
+  logf ${LINE2}
+  for i in ${LIST_TOTAL[@]}; do logf "${i}"; done
+  logf ${LINE2}
   logf "TOTAL: " $ID
   logf "${P}PASSED: " ${#LIST_PASSED[@]} "${N}"
   # for i in ${LIST_PASSED[@]}; do logf "${i//|/ }"; done
   logf "${F}FAILED: " ${#LIST_FAILED[@]} "${N}"
-  for i in ${LIST_FAILED[@]}; do logf "${i//|/ }"; done
+  # for i in ${LIST_FAILED[@]}; do logf "${i//|/ }"; done
   logf "${A}ABORTED: " ${#LIST_ABORTED[@]} "${N}"
-  for i in ${LIST_ABORTED[@]}; do logf "${i//|/ }"; done
+  # for i in ${LIST_ABORTED[@]}; do logf "${i//|/ }"; done
   logf "${S}SKIPPED: " ${#LIST_SKIPPED[@]} "${N}"
-  for i in ${LIST_SKIPPED[@]}; do logf "${i//|/ }"; done
-  logf ${LINE}
+  # for i in ${LIST_SKIPPED[@]}; do logf "${i//|/ }"; done
+  logf ${LINE2}
+  logf "Execution time:" $(seconds2time $(($ts_finish - $ts_start)))
+  logf ${LINE1}
   log
   remove_color ${REPORT_PATH_TS}/${REPORT_FILE}
-}
-
-log_test_run_details() {
-  logf ${LINE}
-  logf "SDL: " $SDL_CORE
-  logf "Test target: " $TEST_TARGET
-  logf ${LINE}
 }
 
 process() {
@@ -51,7 +51,7 @@ process() {
       run $ROW ${#LIST[@]}
     done
   fi
-  log ${LINE}
+  # log ${LINE1}
 }
 
 run() {
@@ -59,7 +59,7 @@ run() {
   local NUM_OF_SCRIPTS=$2
   local ISSUE=$3
 
-  log ${LINE}
+  # log ${LINE1}
 
   let ID=ID+1
 
@@ -126,6 +126,10 @@ run() {
       LIST_SKIPPED[ID]="$ID_SFX|$SCRIPT|$ISSUE"
     ;;
   esac
+
+  local total="$ID_SFX:\t$SCRIPT\t$RESULT_STATUS"
+  if [ -n $ISSUE ]; then total="${total}\t$ISSUE"; fi
+  LIST_TOTAL[ID]="${total}"
 
   log "SCRIPT STATUS: " ${RESULT_STATUS}
 
@@ -211,6 +215,7 @@ await() {
 }
 
 backup() {
+  log ${LINE1}
   log "Back-up SDL files"
   for FILE in ${SDL_BACK_UP[*]}; do cp -n ${SDL_CORE}/${FILE} ${SDL_CORE}/_${FILE}; done
 }
@@ -223,7 +228,7 @@ restore() {
 clean_backup() {
   log "Cleaning up back-up SDL files"
   for FILE in ${SDL_BACK_UP[*]}; do rm -f ${SDL_CORE}/_${FILE}; done
-  log ${LINE}
+  # log ${LINE1}
 }
 
 ctrl_c() {
@@ -240,9 +245,9 @@ ctrl_c() {
 }
 
 function StartUp() {
+  ts_start=$(timestamp)
   trap ctrl_c INT
   backup
-  log_test_run_details
 }
 
 function Run() {
@@ -250,6 +255,7 @@ function Run() {
 }
 
 function TearDown() {
+  ts_finish=$(timestamp)
   restore
   clean_backup
   status

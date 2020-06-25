@@ -28,24 +28,6 @@ _total_failed=0
 _total_aborted=0
 _total_skipped=0
 
-function timestamp() {
-  echo $(date +%s)
-}
-
-function seconds2time() {
-  T=$1
-  D=$((T/60/60/24))
-  H=$((T/60/60%24))
-  M=$((T/60%60))
-  S=$((T%60))
-  if [[ ${D} != 0 ]]
-  then
-     printf '%d days %02d:%02d:%02d' $D $H $M $S
-  else
-     printf '%02d:%02d:%02d' $H $M $S
-  fi
-}
-
 function prepare_num_of_workers {
     local num=$(wc -l $_queue | awk '{print $1}')
     echo "Number of scripts to execute: "$num
@@ -314,7 +296,8 @@ function generate_total_report {
     total_number_of_tests=$(find $env_dir/*/TestingReports/* -maxdepth 0 -type d | wc -l)
 
     overall_report_file=$testing_report_dir/Report.txt
-    echo "=====================================================================================================" > $overall_report_file
+
+    touch $overall_report_file
 
     for worker in $(ls $env_dir | grep _worker)
     do
@@ -340,6 +323,10 @@ function generate_total_report {
     done
 
     sort -o $overall_report_file $overall_report_file
+
+    echo "$(echo ${LINE2} | cat - $overall_report_file)" > $overall_report_file
+    echo "$(echo 'Test target:' $_testfile | cat - $overall_report_file)" > $overall_report_file
+    echo "$(echo ${LINE1} | cat - $overall_report_file)" > $overall_report_file
 
     echo "-----------------------------------------------------------------------------------------------------" >> $overall_report_file
     echo "TOTAL: $_overall_test_number" >> $overall_report_file
