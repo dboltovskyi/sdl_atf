@@ -4,7 +4,8 @@ ATF_PATH=$(cd "$(dirname "$0")" && pwd)
 REPORT_FILE=Report.txt
 REPORT_FILE_CONSOLE=Console.txt
 DEBUG=false
-LINE="====================================================================================================="
+LINE1="====================================================================================================="
+LINE2="-----------------------------------------------------------------------------------------------------"
 
 JOBS=1
 FORCE_PARALLELS=false
@@ -25,6 +26,24 @@ N="\033[0m"    # NONE
 dbg() { if [ $DEBUG = true ]; then echo "DEBUG: $@"; fi }
 
 log() { echo -e $@; }
+
+timestamp() {
+  echo $(date +%s)
+}
+
+seconds2time() {
+  T=$1
+  D=$((T/60/60/24))
+  H=$((T/60/60%24))
+  M=$((T/60%60))
+  S=$((T%60))
+  if [[ ${D} != 0 ]]
+  then
+     printf '%d days %02d:%02d:%02d' $D $H $M $S
+  else
+     printf '%02d:%02d:%02d' $H $M $S
+  fi
+}
 
 show_help() {
   echo "Bash .lua test Script Runner"
