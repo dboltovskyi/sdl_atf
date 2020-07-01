@@ -164,6 +164,9 @@ copy_sdl_logs() {
   if [ $SAVE_SDL_LOG = true ] && [ -f $SDL_LOG ]; then
     cp $SDL_LOG ${REPORT_PATH_TS_SCRIPT}/
   fi
+  if [ -d /tmp/corefiles ]; then
+    mv /tmp/corefiles/* ${REPORT_PATH_TS_SCRIPT}/
+  fi
 }
 
 copy_logs() {
