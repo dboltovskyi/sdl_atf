@@ -21,6 +21,7 @@ function docker_run {
     docker run --rm \
         --name $_container_name \
         --cap-add NET_ADMIN \
+        --privileged \
         -e LOCAL_USER_ID=`id -u $USER` \
         -v $_atf_ts_dir:/home/developer/atf_ts \
         -v $_tmpdirname:/home/developer/sdl \
