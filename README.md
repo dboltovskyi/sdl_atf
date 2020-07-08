@@ -125,10 +125,10 @@ E.g. if path to SDL binaries is defined through `--sdl-core` command line argume
   - --report &lt;path&gt;   - path to report and logs
   - --no-sdl-log            - force not to store SDL log
   - --parallels             - force to use local parallel mode
-    - -j|--jobs &lt;n&gt;        - number of jobs to start ATF in parallels
+    - -j|--jobs &lt;n&gt;        - number of simultaneous jobs to start
     - --third-party &lt;path&gt; - path to SDL third party
     - --atf-ts &lt;path&gt;      - path to ATF test scripts
-    - --tmp &lt;path&gt;         - path to temporary folder used by parallels
+    - --tmp &lt;path&gt;         - path to temporary folder
 
 In case if folder is specified:
    - only scripts which name starts with number will be taken into account (e.g. 001, 002 etc.)
