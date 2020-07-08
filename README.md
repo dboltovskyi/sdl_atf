@@ -124,6 +124,7 @@ E.g. if path to SDL binaries is defined through `--sdl-core` command line argume
   - --sdl-api &lt;path&gt;  - path to SDL APIs
   - --report &lt;path&gt;   - path to report and logs
   - --no-sdl-log            - force not to store SDL log
+  - --no-sdl-core-dump      - force not to store SDL core dump
   - --parallels             - force to use local parallel mode
     - -j|--jobs &lt;n&gt;        - number of simultaneous jobs to start
     - --third-party &lt;path&gt; - path to SDL third party

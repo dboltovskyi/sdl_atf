@@ -5,6 +5,7 @@ _tmpdirname=$1; shift
 _atf_ts_dir=$1; shift
 _queue=$1; shift
 _save_sdl_log=$1; shift
+_save_sdl_core_dump=$1; shift
 _test_id_file=$1; shift
 
 _lockfile=.lock
@@ -90,7 +91,10 @@ function main {
         local script_num=$(echo $row | awk '{print $1}')
         local script_name=$(echo $row | awk '{print $2}')
 
-        docker_run $script_name $([ "$_save_sdl_log" = false ] && echo "--no-sdl-log") --test-id $script_num
+        docker_run $script_name \
+          $([ "$_save_sdl_log" = false ] && echo "--no-sdl-log") \
+          $([ "$_save_sdl_core_dump" = false ] && echo "--no-sdl-core-dump") \
+          --test-id $script_num
 
         sleep 0.1
     done
