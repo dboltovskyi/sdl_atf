@@ -176,6 +176,10 @@ parse_arguments() {
       --test-id)
         TEST_ID="$ARG_VAL"
       ;;
+      -*|--*)
+        echo "Unknown option '$ARG_KEY'"
+        exit 1
+      ;;
       *)
         let NAMELESS_COUNTER=NAMELESS_COUNTER+1
         NAMELESS_ARGS[NAMELESS_COUNTER]="$ARG_VAL"
@@ -183,7 +187,7 @@ parse_arguments() {
     esac
   done
   # handle nameless arguments
-  if [ ${#NAMELESS_ARGS[*]} -eq 1 ]; then
+  if [ ${#NAMELESS_ARGS[*]} -gt 0 ]; then
     TEST_TARGET=${NAMELESS_ARGS[1]}
   fi
   dbg "Func" "parse_arguments" "Exit"
