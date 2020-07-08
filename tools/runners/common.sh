@@ -19,13 +19,9 @@ status() {
   logf ${LINE2}
   logf "TOTAL: " $ID
   logf "${P}PASSED: " ${#LIST_PASSED[@]} "${N}"
-  # for i in ${LIST_PASSED[@]}; do logf "${i//|/ }"; done
   logf "${F}FAILED: " ${#LIST_FAILED[@]} "${N}"
-  # for i in ${LIST_FAILED[@]}; do logf "${i//|/ }"; done
   logf "${A}ABORTED: " ${#LIST_ABORTED[@]} "${N}"
-  # for i in ${LIST_ABORTED[@]}; do logf "${i//|/ }"; done
   logf "${S}SKIPPED: " ${#LIST_SKIPPED[@]} "${N}"
-  # for i in ${LIST_SKIPPED[@]}; do logf "${i//|/ }"; done
   logf ${LINE2}
   logf "Execution time:" $(seconds2time $(($ts_finish - $ts_start)))
   logf ${LINE1}
@@ -51,34 +47,12 @@ process() {
       run $ROW ${#LIST[@]}
     done
   fi
-  # log ${LINE1}
 }
 
-run() {
+run_atf() {
   local SCRIPT=$1
   local NUM_OF_SCRIPTS=$2
   local ISSUE=$3
-
-  # log ${LINE1}
-
-  let ID=ID+1
-
-  log "Processing script: ${ID}(${NUM_OF_SCRIPTS}) ["\
-    "${P}PASSED: ${#LIST_PASSED[@]}, "\
-    "${F}FAILED: ${#LIST_FAILED[@]}, "\
-    "${A}ABORTED: ${#LIST_ABORTED[@]}, "\
-    "${S}SKIPPED: ${#LIST_SKIPPED[@]}"\
-    "${N}]"
-
-  kill_sdl
-
-  clean_atf_folder
-
-  clean_sdl_folder
-
-  clean_atf_logs
-
-  restore
 
   local ID_SFX=$(printf "%0${#NUM_OF_SCRIPTS}d" $ID)
   if [ -n "$TEST_ID" ]; then ID_SFX=$TEST_ID; fi
@@ -132,6 +106,35 @@ run() {
   LIST_TOTAL[ID]="${total}"
 
   log "SCRIPT STATUS: " ${RESULT_STATUS}
+}
+
+run() {
+  local SCRIPT=$1
+  local NUM_OF_SCRIPTS=$2
+  local ISSUE=$3
+
+  log ${LINE1}
+
+  let ID=ID+1
+
+  log "Processing script: ${ID}(${NUM_OF_SCRIPTS}) ["\
+    "${P}PASSED: ${#LIST_PASSED[@]}, "\
+    "${F}FAILED: ${#LIST_FAILED[@]}, "\
+    "${A}ABORTED: ${#LIST_ABORTED[@]}, "\
+    "${S}SKIPPED: ${#LIST_SKIPPED[@]}"\
+    "${N}]"
+
+  kill_sdl
+
+  clean_atf_folder
+
+  clean_sdl_folder
+
+  clean_atf_logs
+
+  restore
+
+  run_atf $SCRIPT $NUM_OF_SCRIPTS $ISSUE
 
   kill_sdl
 
@@ -229,9 +232,9 @@ restore() {
 }
 
 clean_backup() {
+  log ${LINE1}
   log "Cleaning up back-up SDL files"
   for FILE in ${SDL_BACK_UP[*]}; do rm -f ${SDL_CORE}/_${FILE}; done
-  # log ${LINE1}
 }
 
 ctrl_c() {
