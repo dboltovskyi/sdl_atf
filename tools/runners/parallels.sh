@@ -13,6 +13,7 @@ _path_sdl_api="$SDL_API"
 _path_3rd_party="$THIRD_PARTY"
 _path_atf_test_scripts="$ATF_TS_PATH"
 _save_sdl_log="$SAVE_SDL_LOG"
+_save_sdl_core_dump="$SAVE_SDL_CORE_DUMP"
 _copy_ts="$COPY_TS"
 _path_to_atf_parallels="$_path_atf/atf_parallels"
 _test_id_file=.test_id
@@ -390,6 +391,7 @@ function Run() {
       $atf_tmp_ts_dir \
       $_queue \
       $_save_sdl_log \
+      $_save_sdl_core_dump \
       $_test_id_file
     _tmp_workers=$(echo $_tmp_workers" $screen_basename" | xargs)
   done

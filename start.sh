@@ -10,6 +10,7 @@ LINE2=$(printf -- '-%.0s' {1..100})
 JOBS=1
 FORCE_PARALLELS=false
 SAVE_SDL_LOG=true
+SAVE_SDL_CORE_DUMP=true
 COPY_TS=false
 
 THIRD_PARTY="$THIRD_PARTY_INSTALL_PREFIX"
@@ -65,6 +66,7 @@ show_help() {
   echo "   --sdl-api          - path to SDL APIs"
   echo "   --report           - path to report and logs"
   echo "   --no-sdl-log       - force not to store SDL log"
+  echo "   --no-sdl-core-dump - force not to store SDL core dump"
   echo "   --parallels        - force to use parallels mode"
   echo "     -j|--jobs n      - number of jobs to start ATF in parallels"
   echo "     --third-party    - path to SDL third party"
@@ -165,6 +167,9 @@ parse_arguments() {
       ;;
       --no-sdl-log)
         SAVE_SDL_LOG=false
+      ;;
+      --no-sdl-core-dump)
+        SAVE_SDL_CORE_DUMP=false
       ;;
       --copy-atf-ts)
         COPY_TS=true
