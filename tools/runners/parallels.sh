@@ -124,6 +124,10 @@ function prepare_atf {
 }
 
 function prepare_queue {
+  #
+  #   Preparation of the queue with a list of scripts to be executed
+  #
+
   if [ -f "$_queue" ];then
     rm $_queue
   fi
@@ -175,6 +179,10 @@ function common {
 }
 
 function mktemptdir {
+  #
+  #   Create temporary folder with SDL, ATF and Test Scripts
+  #
+
   tmpdirname=$(mktemp --suffix=_worker --tmpdir=$_tmp_dir -d)
 
   mkdir -p $tmpdirname/bin
@@ -344,7 +352,7 @@ function generate_total_report {
 #############################################################
 
 function int_handler {
-  echo "Please, wait for subprocesses to be buried alive."
+  echo "Please, wait for subprocesses to be stopped"
 
   # Stop handling sigint
   trap - INT
@@ -386,7 +394,7 @@ function Run() {
     _tmp_workers=$(echo $_tmp_workers" $screen_basename" | xargs)
   done
 
-  log "Workers are running. Waiting termination..."
+  log "Workers are running. Waiting for termination..."
   wait_screen_termination_with_progress
 }
 
