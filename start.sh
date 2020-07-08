@@ -14,7 +14,6 @@ SAVE_SDL_CORE_DUMP=true
 COPY_TS=false
 
 THIRD_PARTY="$THIRD_PARTY_INSTALL_PREFIX"
-ATF_TS_PATH=$(dirname $(realpath test_scripts))
 TMP_PATH=/tmp
 
 # Color modifications
@@ -156,9 +155,6 @@ parse_arguments() {
       --third-party)
         THIRD_PARTY="$ARG_VAL"
       ;;
-      --atf-ts)
-        ATF_TS_PATH="$ARG_VAL"
-      ;;
       --parallels)
         FORCE_PARALLELS=true
       ;;
@@ -202,6 +198,18 @@ print_parameters() {
   dbg "SDL_API: "$SDL_API
   dbg "IS_REMOTE_ENABLED: "$IS_REMOTE_ENABLED
   dbg "SAVE_SDL_LOG: "$SAVE_SDL_LOG
+}
+
+check_environment() {
+  dbg "Func" "check_environment" "Enter"
+  local dirs=("test_scripts" "test_sets" "files" "user_modules")
+  for dir in ${dirs[@]}; do
+    if [ ! -d "$dir" ]; then
+      echo "Required folder '$dir' is not available"
+      exit 1
+    fi
+  done
+  dbg "Func" "check_environment" "Exit"
 }
 
 check_arguments() {
@@ -327,6 +335,8 @@ load_runner() {
   fi
   dbg "Func" "load_runner" "Exit"
 }
+
+check_environment
 
 parse_arguments "$@"
 

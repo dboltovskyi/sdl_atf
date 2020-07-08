@@ -11,7 +11,6 @@ _test_result_path="$REPORT_PATH_TS"
 _testfile="$TEST_TARGET"
 _path_sdl_api="$SDL_API"
 _path_3rd_party="$THIRD_PARTY"
-_path_atf_test_scripts="$ATF_TS_PATH"
 _save_sdl_log="$SAVE_SDL_LOG"
 _save_sdl_core_dump="$SAVE_SDL_CORE_DUMP"
 _copy_ts="$COPY_TS"
@@ -100,21 +99,19 @@ function prepare_atf {
   fi
   rsync -a $_path_atf/* $atf_tmp_dir/ --exclude TestingReports --exclude $_test_result_path
 
-  rm_dir_if_exists $atf_tmp_dir/files
-  rm_dir_if_exists $atf_tmp_dir/test_scripts
-  rm_dir_if_exists $atf_tmp_dir/user_modules
-  rm_dir_if_exists $atf_tmp_dir/test_sets
+  local dirs=("test_scripts" "test_sets" "files" "user_modules")
+  for dir in ${dirs[@]}; do
+    rm_dir_if_exists $atf_tmp_dir/$dir
+  done
 
   if [ -d "$atf_tmp_ts_dir" ]; then
     rm -r $atf_tmp_ts_dir
   fi
   mkdir $atf_tmp_ts_dir
 
-  if [ ! -d "$_path_atf_test_scripts" ]; then
-    log "Wrong path to ATF test scripts: '$_path_atf_test_scripts'"
-    exit 1
-  fi
-  cp -r $_path_atf_test_scripts/* $atf_tmp_ts_dir/
+  for dir in ${dirs[@]}; do
+    cp -r $(realpath ./$dir) $atf_tmp_ts_dir/
+  done
 
   if [ -n "$_path_sdl_api" ]; then cp $_path_sdl_api/*.xml $atf_tmp_dir/data; fi
 

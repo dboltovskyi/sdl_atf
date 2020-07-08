@@ -128,7 +128,6 @@ E.g. if path to SDL binaries is defined through `--sdl-core` command line argume
   - --parallels             - force to use local parallel mode
     - -j|--jobs &lt;n&gt;        - number of simultaneous jobs to start
     - --third-party &lt;path&gt; - path to SDL third party
-    - --atf-ts &lt;path&gt;      - path to ATF test scripts
     - --tmp &lt;path&gt;         - path to temporary folder
 
 In case if folder is specified:
