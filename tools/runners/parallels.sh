@@ -250,7 +250,7 @@ function show_progress {
 }
 
 function clean_up {
-  rm -rf $_tmp_dir
+  # rm -rf $_tmp_dir
   rm $_queue
   rm $_queue_reference
   rm $_test_id_file
@@ -387,7 +387,7 @@ function Run() {
   for (( a = 0; a < $_number_of_workers; a++ )); do
     tmpdirname=$(mktempdir)
     screen_basename=$(basename $tmpdirname)
-    screen -d -m -S $screen_basename \
+    # screen -d -m -S $screen_basename \
       $_path_to_atf_parallels/loop.sh \
       $_sdl_prepared \
       $tmpdirname \
