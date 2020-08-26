@@ -19,6 +19,11 @@ _container_name=$(basename $_tmpdirname)
 ####################################################################
 
 function docker_run {
+    echo "user:" $(whoami)
+    echo "user_id:" $(id -u $USER)
+    echo "_atf_ts_dir:" $_atf_ts_dir
+    echo "_tmpdirname:" $_tmpdirname
+    echo "_sdl_prepared:" $_sdl_prepared
     docker run --rm \
         --name $_container_name \
         --cap-add NET_ADMIN \
